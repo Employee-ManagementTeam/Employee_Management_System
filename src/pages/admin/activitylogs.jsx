@@ -22,8 +22,9 @@ function ActivityLogs() {
 
   const loadLogs = async () => {
     try {
-      const response =
-        await getActivityLogs();
+      setError("");
+
+      const response = await getActivityLogs();
 
       const data = Array.isArray(response)
         ? response
@@ -46,15 +47,14 @@ function ActivityLogs() {
     e.preventDefault();
 
     try {
+      setError("");
+
       await createActivityLog(form);
 
-      setMessage(
-        "Activity log created successfully."
-      );
+      setMessage("Activity log created successfully.");
 
       setForm({
-        user_id:
-          localStorage.getItem("userId") || "",
+        user_id: localStorage.getItem("userId") || "",
         action: "",
         module: "",
         description: "",
@@ -63,159 +63,246 @@ function ActivityLogs() {
       await loadLogs();
     } catch (err) {
       setError(err.message);
+      setMessage("");
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-slate-50">
       <Sidebar />
       <Navbar />
 
       <main className="ml-64 pt-20">
         <div className="p-8">
 
-          <h1 className="text-3xl font-bold text-gray-800">
-            Activity Logs
-          </h1>
+          <div className="mb-8">
+            <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-orange-600">
+              Security & Monitoring
+            </p>
 
-          <p className="mb-8 text-gray-500">
-            Track system and user activities
-          </p>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+              Activity Logs
+            </h1>
+
+            <p className="mt-2 text-slate-500">
+              Track system and user activity across the application
+            </p>
+          </div>
 
           {message && (
-            <div className="mb-4 rounded-xl bg-green-50 p-4 text-green-700">
+            <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-700">
               {message}
             </div>
           )}
 
           {error && (
-            <div className="mb-4 rounded-xl bg-red-50 p-4 text-red-600">
+            <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">
               {error}
             </div>
           )}
 
-          <form
-            onSubmit={handleSubmit}
-            className="mb-8 rounded-2xl bg-white p-6 shadow-sm"
-          >
-            <h2 className="mb-5 text-xl font-bold">
-              Create Activity Log
-            </h2>
+          {/* CREATE LOG */}
+          <div className="mb-8 rounded-2xl border border-slate-200 bg-white shadow-sm">
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="border-b border-slate-200 px-6 py-5">
+              <h2 className="text-lg font-bold text-slate-900">
+                Create Activity Log
+              </h2>
 
-              <input
-                value={form.user_id}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    user_id: e.target.value,
-                  })
-                }
-                placeholder="User ID"
-                className="rounded-xl border px-4 py-3"
-                required
-              />
-
-              <input
-                value={form.action}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    action: e.target.value,
-                  })
-                }
-                placeholder="Action"
-                className="rounded-xl border px-4 py-3"
-                required
-              />
-
-              <input
-                value={form.module}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    module: e.target.value,
-                  })
-                }
-                placeholder="Module"
-                className="rounded-xl border px-4 py-3"
-                required
-              />
-
-              <textarea
-                value={form.description}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    description: e.target.value,
-                  })
-                }
-                placeholder="Description"
-                className="rounded-xl border px-4 py-3"
-                required
-              />
-
+              <p className="mt-1 text-sm text-slate-500">
+                Record an activity or system event
+              </p>
             </div>
 
-            <button className="mt-5 rounded-xl bg-orange-600 px-6 py-3 font-semibold text-white hover:bg-orange-700">
-              Add Activity
-            </button>
-          </form>
+            <form onSubmit={handleSubmit} className="p-6">
 
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <div className="grid gap-5 md:grid-cols-2">
 
-            <h2 className="mb-5 text-xl font-bold">
-              Activity History
-            </h2>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                    User ID
+                  </label>
 
-            <div className="space-y-4">
+                  <input
+                    value={form.user_id}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        user_id: e.target.value,
+                      })
+                    }
+                    placeholder="User ID"
+                    required
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
+                  />
+                </div>
 
-              {logs.map((log, index) => {
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                    Action
+                  </label>
 
-                const id =
-                  log._id ||
-                  log.id ||
-                  index;
+                  <input
+                    value={form.action}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        action: e.target.value,
+                      })
+                    }
+                    placeholder="Example: Updated employee"
+                    required
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
+                  />
+                </div>
 
-                return (
-                  <div
-                    key={id}
-                    className="rounded-xl border border-gray-100 p-5 transition hover:border-orange-200 hover:bg-orange-50"
-                  >
-                    <div className="flex items-start justify-between">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                    Module
+                  </label>
 
-                      <div>
+                  <input
+                    value={form.module}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        module: e.target.value,
+                      })
+                    }
+                    placeholder="Example: Employees"
+                    required
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
+                  />
+                </div>
 
-                        <h3 className="font-bold text-gray-800">
-                          {log.action ||
-                            "Activity"}
-                        </h3>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                    Description
+                  </label>
 
-                        <p className="mt-1 text-sm text-orange-600">
-                          {log.module ||
-                            "System"}
-                        </p>
+                  <textarea
+                    value={form.description}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        description: e.target.value,
+                      })
+                    }
+                    placeholder="Describe the activity"
+                    rows={1}
+                    required
+                    className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
+                  />
+                </div>
 
-                        <p className="mt-2 text-gray-600">
-                          {log.description ||
-                            "-"}
-                        </p>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="submit"
+                  className="rounded-xl bg-orange-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 hover:shadow-md"
+                >
+                  Add Activity
+                </button>
+              </div>
+
+            </form>
+          </div>
+
+          {/* HISTORY */}
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+            <div className="border-b border-slate-200 px-6 py-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">
+                    Activity History
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    {logs.length} recorded activit
+                    {logs.length === 1 ? "y" : "ies"}
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
+                  Audit Trail
+                </div>
+              </div>
+            </div>
+
+            {logs.length === 0 ? (
+              <div className="p-12 text-center">
+                <p className="font-semibold text-slate-700">
+                  No activity recorded
+                </p>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  New activity records will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+
+                {logs.map((log, index) => {
+                  const id =
+                    log._id ||
+                    log.id ||
+                    index;
+
+                  return (
+                    <div
+                      key={id}
+                      className="px-6 py-5 transition hover:bg-slate-50"
+                    >
+                      <div className="flex gap-4">
+
+                        <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+                          <svg
+                            className="h-5 w-5"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                          >
+                            <path d="M12 3v18" />
+                            <path d="M5 8h10a4 4 0 0 1 0 8H8" />
+                          </svg>
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+
+                            <div>
+                              <h3 className="font-semibold text-slate-900">
+                                {log.action || "Activity"}
+                              </h3>
+
+                              <p className="mt-1 text-sm font-medium text-orange-600">
+                                {log.module || "System"}
+                              </p>
+                            </div>
+
+                            <span className="w-fit rounded-full bg-slate-100 px-3 py-1 font-mono text-[11px] text-slate-500">
+                              {log.user_id || "User"}
+                            </span>
+
+                          </div>
+
+                          <p className="mt-3 text-sm leading-6 text-slate-600">
+                            {log.description || "No description available."}
+                          </p>
+
+                        </div>
 
                       </div>
-
-                      <span className="rounded-full bg-orange-100 px-3 py-1 text-xs text-orange-700">
-                        {log.user_id ||
-                          "User"}
-                      </span>
-
                     </div>
+                  );
+                })}
 
-                  </div>
-                );
-              })}
-
-            </div>
+              </div>
+            )}
 
           </div>
 
