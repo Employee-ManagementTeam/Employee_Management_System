@@ -88,17 +88,10 @@ def get_current_user():
             return None
 
         return {
-            "id":
-                str(user["_id"]),
-
-            "username":
-                user.get("username"),
-
-            "email":
-                user.get("email"),
-
-            "role":
-                user.get("role")
+            "id": str(user["_id"]),
+            "username": user.get("username"),
+            "email": user.get("email"),
+            "role": user.get("role")
         }
 
     except Exception:
@@ -155,6 +148,13 @@ def get_api_module(path):
 # ============================================================
 
 def check_authorization():
+
+    # --------------------------------------------------------
+    # Allow CORS preflight OPTIONS requests
+    # --------------------------------------------------------
+
+    if request.method == "OPTIONS":
+        return None
 
     path = request.path
 
