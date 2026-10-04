@@ -1,9 +1,73 @@
 from flask import Blueprint, request, jsonify
-from database import get_connection
+from database import get_db
+from bson import ObjectId
 from datetime import datetime
+from authorization import get_current_user
 
 
 attendance = Blueprint("attendance", __name__)
+
+
+# =========================================================
+# HELPER FUNCTION
+# =========================================================
+
+def attendance_response(record, employee=None):
+    """
+    Convert MongoDB attendance document into JSON response.
+    """
+
+    response = {
+        "id": str(record["_id"]),
+        "employee_id": str(record["employee_id"]),
+        "attendance_date": record.get("attendance_date"),
+        "check_in": record.get("check_in"),
+        "check_out": record.get("check_out"),
+        "status": record.get("status", "Present"),
+        "created_at": record.get("created_at")
+    }
+
+    # Add employee information when available
+    if employee:
+        response["employee_code"] = employee.get("employee_code")
+        response["first_name"] = employee.get("first_name")
+        response["last_name"] = employee.get("last_name")
+
+    return response
+
+
+# =========================================================
+# AUTHORIZATION HELPER
+# =========================================================
+
+def employee_belongs_to_user(employee, user):
+    """
+    Check whether the employee record belongs to
+    the currently logged-in user.
+    """
+
+    employee_user_id = employee.get("user_id")
+
+    if not employee_user_id:
+        return False
+
+    return str(employee_user_id) == str(user["id"])
+
+
+def get_employee_for_user(employee_id):
+    """
+    Find an employee by ID and return it.
+    """
+
+    if not ObjectId.is_valid(employee_id):
+        return None
+
+    db = get_db()
+    employees_collection = db["employees"]
+
+    return employees_collection.find_one({
+        "_id": ObjectId(employee_id)
+    })
 
 
 # =========================================================
@@ -13,6 +77,8 @@ attendance = Blueprint("attendance", __name__)
 @attendance.route("/api/attendance/check-in", methods=["POST"])
 def check_in():
 
+    user = get_current_user()
+
     data = request.get_json()
 
     if not data:
@@ -29,19 +95,24 @@ def check_in():
             "message": "Employee ID is required"
         }), 400
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    # Validate employee ObjectId
+    if not ObjectId.is_valid(employee_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid employee ID"
+        }), 400
+
+    db = get_db()
+
+    employees_collection = db["employees"]
+    attendance_collection = db["attendance"]
 
     try:
 
         # Check whether employee exists
-        cursor.execute("""
-            SELECT *
-            FROM employees
-            WHERE id = ?
-        """, (employee_id,))
-
-        employee = cursor.fetchone()
+        employee = employees_collection.find_one({
+            "_id": ObjectId(employee_id)
+        })
 
         if not employee:
             return jsonify({
@@ -49,18 +120,26 @@ def check_in():
                 "message": "Employee not found"
             }), 404
 
+        # Employee can check in only for themselves
+        if user["role"] == "employee":
+
+            if not employee_belongs_to_user(employee, user):
+                return jsonify({
+                    "success": False,
+                    "message": (
+                        "Access denied. You can only "
+                        "check in for yourself."
+                    )
+                }), 403
+
         today = datetime.now().strftime("%Y-%m-%d")
         current_time = datetime.now().strftime("%H:%M:%S")
 
         # Check whether employee already checked in today
-        cursor.execute("""
-            SELECT *
-            FROM attendance
-            WHERE employee_id = ?
-            AND attendance_date = ?
-        """, (employee_id, today))
-
-        existing_attendance = cursor.fetchone()
+        existing_attendance = attendance_collection.find_one({
+            "employee_id": ObjectId(employee_id),
+            "attendance_date": today
+        })
 
         if existing_attendance:
             return jsonify({
@@ -69,29 +148,23 @@ def check_in():
             }), 409
 
         # Create attendance record
-        cursor.execute("""
-            INSERT INTO attendance (
-                employee_id,
-                attendance_date,
-                check_in,
-                status
-            )
-            VALUES (?, ?, ?, ?)
-        """, (
-            employee_id,
-            today,
-            current_time,
-            "Present"
-        ))
+        attendance_record = {
+            "employee_id": ObjectId(employee_id),
+            "attendance_date": today,
+            "check_in": current_time,
+            "check_out": None,
+            "status": "Present",
+            "created_at": datetime.now().isoformat()
+        }
 
-        connection.commit()
-
-        attendance_id = cursor.lastrowid
+        result = attendance_collection.insert_one(
+            attendance_record
+        )
 
         return jsonify({
             "success": True,
             "message": "Check-in successful",
-            "attendance_id": attendance_id,
+            "attendance_id": str(result.inserted_id),
             "employee_id": employee_id,
             "date": today,
             "check_in": current_time
@@ -99,16 +172,10 @@ def check_in():
 
     except Exception as error:
 
-        connection.rollback()
-
         return jsonify({
             "success": False,
             "message": str(error)
         }), 500
-
-    finally:
-
-        connection.close()
 
 
 # =========================================================
@@ -118,6 +185,8 @@ def check_in():
 @attendance.route("/api/attendance/check-out", methods=["POST"])
 def check_out():
 
+    user = get_current_user()
+
     data = request.get_json()
 
     if not data:
@@ -134,22 +203,50 @@ def check_out():
             "message": "Employee ID is required"
         }), 400
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    # Validate employee ObjectId
+    if not ObjectId.is_valid(employee_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid employee ID"
+        }), 400
+
+    db = get_db()
+
+    employees_collection = db["employees"]
+    attendance_collection = db["attendance"]
 
     try:
+
+        # Check employee exists
+        employee = employees_collection.find_one({
+            "_id": ObjectId(employee_id)
+        })
+
+        if not employee:
+            return jsonify({
+                "success": False,
+                "message": "Employee not found"
+            }), 404
+
+        # Employee can check out only for themselves
+        if user["role"] == "employee":
+
+            if not employee_belongs_to_user(employee, user):
+                return jsonify({
+                    "success": False,
+                    "message": (
+                        "Access denied. You can only "
+                        "check out for yourself."
+                    )
+                }), 403
 
         today = datetime.now().strftime("%Y-%m-%d")
         current_time = datetime.now().strftime("%H:%M:%S")
 
-        cursor.execute("""
-            SELECT *
-            FROM attendance
-            WHERE employee_id = ?
-            AND attendance_date = ?
-        """, (employee_id, today))
-
-        attendance_record = cursor.fetchone()
+        attendance_record = attendance_collection.find_one({
+            "employee_id": ObjectId(employee_id),
+            "attendance_date": today
+        })
 
         if not attendance_record:
             return jsonify({
@@ -157,22 +254,22 @@ def check_out():
                 "message": "Employee has not checked in today"
             }), 404
 
-        if attendance_record["check_out"]:
+        if attendance_record.get("check_out"):
             return jsonify({
                 "success": False,
                 "message": "Employee already checked out today"
             }), 409
 
-        cursor.execute("""
-            UPDATE attendance
-            SET check_out = ?
-            WHERE id = ?
-        """, (
-            current_time,
-            attendance_record["id"]
-        ))
-
-        connection.commit()
+        attendance_collection.update_one(
+            {
+                "_id": attendance_record["_id"]
+            },
+            {
+                "$set": {
+                    "check_out": current_time
+                }
+            }
+        )
 
         return jsonify({
             "success": True,
@@ -184,16 +281,10 @@ def check_out():
 
     except Exception as error:
 
-        connection.rollback()
-
         return jsonify({
             "success": False,
             "message": str(error)
         }), 500
-
-    finally:
-
-        connection.close()
 
 
 # =========================================================
@@ -203,56 +294,83 @@ def check_out():
 @attendance.route("/api/attendance", methods=["GET"])
 def get_attendance():
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    user = get_current_user()
+
+    db = get_db()
+
+    employees_collection = db["employees"]
+    attendance_collection = db["attendance"]
 
     try:
 
-        cursor.execute("""
-            SELECT
-                attendance.id,
-                attendance.employee_id,
-                employees.employee_code,
-                employees.first_name,
-                employees.last_name,
-                attendance.attendance_date,
-                attendance.check_in,
-                attendance.check_out,
-                attendance.status,
-                attendance.created_at
-            FROM attendance
-            INNER JOIN employees
-                ON attendance.employee_id = employees.id
-            ORDER BY attendance.id DESC
-        """)
+        # Employee can see only their own attendance
+        if user["role"] == "employee":
 
-        attendance_data = cursor.fetchall()
+            employee = employees_collection.find_one({
+                "user_id": ObjectId(user["id"])
+            })
+
+            if not employee:
+                return jsonify({
+                    "success": True,
+                    "attendance": []
+                }), 200
+
+            attendance_data = attendance_collection.find({
+                "employee_id": employee["_id"]
+            }).sort(
+                "attendance_date",
+                -1
+            )
+
+            attendance_list = []
+
+            for record in attendance_data:
+
+                attendance_list.append(
+                    attendance_response(
+                        record,
+                        employee
+                    )
+                )
+
+            return jsonify({
+                "success": True,
+                "attendance": attendance_list
+            }), 200
+
+        # Admin and manager can see all attendance
+        attendance_data = attendance_collection.find().sort(
+            "_id",
+            -1
+        )
 
         attendance_list = []
 
         for record in attendance_data:
 
-            attendance_list.append({
-                "id": record["id"],
-                "employee_id": record["employee_id"],
-                "employee_code": record["employee_code"],
-                "first_name": record["first_name"],
-                "last_name": record["last_name"],
-                "attendance_date": record["attendance_date"],
-                "check_in": record["check_in"],
-                "check_out": record["check_out"],
-                "status": record["status"],
-                "created_at": record["created_at"]
+            employee = employees_collection.find_one({
+                "_id": record["employee_id"]
             })
+
+            attendance_list.append(
+                attendance_response(
+                    record,
+                    employee
+                )
+            )
 
         return jsonify({
             "success": True,
             "attendance": attendance_list
         }), 200
 
-    finally:
+    except Exception as error:
 
-        connection.close()
+        return jsonify({
+            "success": False,
+            "message": str(error)
+        }), 500
 
 
 # =========================================================
@@ -260,24 +378,28 @@ def get_attendance():
 # =========================================================
 
 @attendance.route(
-    "/api/attendance/employee/<int:employee_id>",
+    "/api/attendance/employee/<employee_id>",
     methods=["GET"]
 )
 def get_employee_attendance(employee_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    if not ObjectId.is_valid(employee_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid employee ID"
+        }), 400
+
+    db = get_db()
+
+    employees_collection = db["employees"]
+    attendance_collection = db["attendance"]
 
     try:
 
         # Check employee exists
-        cursor.execute("""
-            SELECT *
-            FROM employees
-            WHERE id = ?
-        """, (employee_id,))
-
-        employee = cursor.fetchone()
+        employee = employees_collection.find_one({
+            "_id": ObjectId(employee_id)
+        })
 
         if not employee:
             return jsonify({
@@ -285,49 +407,46 @@ def get_employee_attendance(employee_id):
                 "message": "Employee not found"
             }), 404
 
-        cursor.execute("""
-            SELECT
-                attendance.id,
-                attendance.employee_id,
-                employees.employee_code,
-                employees.first_name,
-                employees.last_name,
-                attendance.attendance_date,
-                attendance.check_in,
-                attendance.check_out,
-                attendance.status,
-                attendance.created_at
-            FROM attendance
-            INNER JOIN employees
-                ON attendance.employee_id = employees.id
-            WHERE attendance.employee_id = ?
-            ORDER BY attendance.attendance_date DESC
-        """, (employee_id,))
+        user = get_current_user()
 
-        attendance_data = cursor.fetchall()
+        # Employee can only view their own attendance
+        if user["role"] == "employee":
+
+            if not employee_belongs_to_user(employee, user):
+                return jsonify({
+                    "success": False,
+                    "message": (
+                        "Access denied. You can only "
+                        "view your own attendance."
+                    )
+                }), 403
+
+        attendance_data = attendance_collection.find({
+            "employee_id": ObjectId(employee_id)
+        }).sort(
+            "attendance_date",
+            -1
+        )
 
         attendance_list = []
 
         for record in attendance_data:
 
-            attendance_list.append({
-                "id": record["id"],
-                "employee_id": record["employee_id"],
-                "employee_code": record["employee_code"],
-                "first_name": record["first_name"],
-                "last_name": record["last_name"],
-                "attendance_date": record["attendance_date"],
-                "check_in": record["check_in"],
-                "check_out": record["check_out"],
-                "status": record["status"],
-                "created_at": record["created_at"]
-            })
+            attendance_list.append(
+                attendance_response(
+                    record,
+                    employee
+                )
+            )
 
         return jsonify({
             "success": True,
             "attendance": attendance_list
         }), 200
 
-    finally:
+    except Exception as error:
 
-        connection.close()
+        return jsonify({
+            "success": False,
+            "message": str(error)
+        }), 500

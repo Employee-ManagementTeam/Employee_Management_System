@@ -1,9 +1,54 @@
 from flask import Blueprint, request, jsonify
-from database import get_connection
+from database import get_db
+from bson import ObjectId
 from datetime import datetime
 
 
 performance = Blueprint("performance", __name__)
+
+
+# =========================================================
+# HELPER FUNCTION
+# =========================================================
+
+def performance_response(record, employee=None, reviewer=None):
+    response = {
+        "id": str(record["_id"]),
+        "employee_id": str(record["employee_id"]),
+        "reviewer_id": (
+            str(record["reviewer_id"])
+            if record.get("reviewer_id")
+            else None
+        ),
+        "reviewer_username": (
+            reviewer.get("username")
+            if reviewer
+            else None
+        ),
+        "review_period": record.get("review_period"),
+        "rating": record.get("rating"),
+        "strengths": record.get("strengths"),
+        "areas_for_improvement": record.get(
+            "areas_for_improvement"
+        ),
+        "comments": record.get("comments"),
+        "status": record.get("status", "Completed"),
+        "created_at": record.get("created_at"),
+        "updated_at": record.get("updated_at")
+    }
+
+    if employee:
+        response["employee_code"] = employee.get(
+            "employee_code"
+        )
+        response["first_name"] = employee.get(
+            "first_name"
+        )
+        response["last_name"] = employee.get(
+            "last_name"
+        )
+
+    return response
 
 
 # =========================================================
@@ -26,11 +71,16 @@ def create_performance():
     review_period = data.get("review_period")
     rating = data.get("rating")
     strengths = data.get("strengths")
-    areas_for_improvement = data.get("areas_for_improvement")
+    areas_for_improvement = data.get(
+        "areas_for_improvement"
+    )
     comments = data.get("comments")
     status = data.get("status", "Completed")
 
+    # -----------------------------------------------------
     # Required fields
+    # -----------------------------------------------------
+
     if not employee_id:
         return jsonify({
             "success": False,
@@ -49,7 +99,20 @@ def create_performance():
             "message": "Rating is required"
         }), 400
 
+    # -----------------------------------------------------
+    # Validate employee ID
+    # -----------------------------------------------------
+
+    if not ObjectId.is_valid(employee_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid employee ID"
+        }), 400
+
+    # -----------------------------------------------------
     # Validate rating
+    # -----------------------------------------------------
+
     try:
         rating = float(rating)
     except (TypeError, ValueError):
@@ -64,7 +127,10 @@ def create_performance():
             "message": "Rating must be between 1 and 5"
         }), 400
 
+    # -----------------------------------------------------
     # Validate status
+    # -----------------------------------------------------
+
     allowed_statuses = [
         "Draft",
         "Completed"
@@ -76,89 +142,81 @@ def create_performance():
             "message": "Invalid performance status"
         }), 400
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    db = get_db()
 
-    try:
+    performance_collection = db["performance"]
+    employees_collection = db["employees"]
+    users_collection = db["users"]
 
-        # Check employee
-        cursor.execute("""
-            SELECT *
-            FROM employees
-            WHERE id = ?
-        """, (employee_id,))
+    # -----------------------------------------------------
+    # Check employee
+    # -----------------------------------------------------
 
-        employee = cursor.fetchone()
+    employee = employees_collection.find_one({
+        "_id": ObjectId(employee_id)
+    })
 
-        if not employee:
-            return jsonify({
-                "success": False,
-                "message": "Employee not found"
-            }), 404
-
-        # Check reviewer
-        if reviewer_id:
-
-            cursor.execute("""
-                SELECT *
-                FROM users
-                WHERE id = ?
-            """, (reviewer_id,))
-
-            reviewer = cursor.fetchone()
-
-            if not reviewer:
-                return jsonify({
-                    "success": False,
-                    "message": "Reviewer user not found"
-                }), 404
-
-        # Insert performance record
-        cursor.execute("""
-            INSERT INTO performance (
-                employee_id,
-                reviewer_id,
-                review_period,
-                rating,
-                strengths,
-                areas_for_improvement,
-                comments,
-                status
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            employee_id,
-            reviewer_id,
-            review_period,
-            rating,
-            strengths,
-            areas_for_improvement,
-            comments,
-            status
-        ))
-
-        connection.commit()
-
-        performance_id = cursor.lastrowid
-
-        return jsonify({
-            "success": True,
-            "message": "Performance record created successfully",
-            "performance_id": performance_id,
-            "status": status
-        }), 201
-
-    except Exception as error:
-
-        connection.rollback()
-
+    if not employee:
         return jsonify({
             "success": False,
-            "message": str(error)
-        }), 500
+            "message": "Employee not found"
+        }), 404
 
-    finally:
-        connection.close()
+    # -----------------------------------------------------
+    # Check reviewer
+    # -----------------------------------------------------
+
+    reviewer_object_id = None
+
+    if reviewer_id:
+
+        if not ObjectId.is_valid(reviewer_id):
+            return jsonify({
+                "success": False,
+                "message": "Invalid reviewer ID"
+            }), 400
+
+        reviewer = users_collection.find_one({
+            "_id": ObjectId(reviewer_id)
+        })
+
+        if not reviewer:
+            return jsonify({
+                "success": False,
+                "message": "Reviewer user not found"
+            }), 404
+
+        reviewer_object_id = ObjectId(reviewer_id)
+
+    # -----------------------------------------------------
+    # Create performance record
+    # -----------------------------------------------------
+
+    current_time = datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+    record = {
+        "employee_id": ObjectId(employee_id),
+        "reviewer_id": reviewer_object_id,
+        "review_period": review_period,
+        "rating": rating,
+        "strengths": strengths,
+        "areas_for_improvement": areas_for_improvement,
+        "comments": comments,
+        "status": status,
+        "created_at": current_time,
+        "updated_at": None
+    }
+
+    result = performance_collection.insert_one(record)
+
+    return jsonify({
+        "success": True,
+        "message": "Performance record created successfully",
+        "performance_id": str(result.inserted_id),
+        "status": status
+    }), 201
 
 
 # =========================================================
@@ -168,72 +226,44 @@ def create_performance():
 @performance.route("/api/performance", methods=["GET"])
 def get_performance_records():
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    db = get_db()
 
-    try:
+    performance_collection = db["performance"]
+    employees_collection = db["employees"]
+    users_collection = db["users"]
 
-        cursor.execute("""
-            SELECT
-                performance.id,
-                performance.employee_id,
-                employees.employee_code,
-                employees.first_name,
-                employees.last_name,
-                performance.reviewer_id,
-                users.username AS reviewer_username,
-                performance.review_period,
-                performance.rating,
-                performance.strengths,
-                performance.areas_for_improvement,
-                performance.comments,
-                performance.status,
-                performance.created_at,
-                performance.updated_at
+    records = performance_collection.find().sort(
+        "_id",
+        -1
+    )
 
-            FROM performance
+    performance_list = []
 
-            INNER JOIN employees
-                ON performance.employee_id = employees.id
+    for record in records:
 
-            LEFT JOIN users
-                ON performance.reviewer_id = users.id
+        employee = employees_collection.find_one({
+            "_id": record["employee_id"]
+        })
 
-            ORDER BY performance.id DESC
-        """)
+        reviewer = None
 
-        records = cursor.fetchall()
-
-        performance_list = []
-
-        for record in records:
-
-            performance_list.append({
-                "id": record["id"],
-                "employee_id": record["employee_id"],
-                "employee_code": record["employee_code"],
-                "first_name": record["first_name"],
-                "last_name": record["last_name"],
-                "reviewer_id": record["reviewer_id"],
-                "reviewer_username": record["reviewer_username"],
-                "review_period": record["review_period"],
-                "rating": record["rating"],
-                "strengths": record["strengths"],
-                "areas_for_improvement":
-                    record["areas_for_improvement"],
-                "comments": record["comments"],
-                "status": record["status"],
-                "created_at": record["created_at"],
-                "updated_at": record["updated_at"]
+        if record.get("reviewer_id"):
+            reviewer = users_collection.find_one({
+                "_id": record["reviewer_id"]
             })
 
-        return jsonify({
-            "success": True,
-            "performance": performance_list
-        }), 200
+        performance_list.append(
+            performance_response(
+                record,
+                employee,
+                reviewer
+            )
+        )
 
-    finally:
-        connection.close()
+    return jsonify({
+        "success": True,
+        "performance": performance_list
+    }), 200
 
 
 # =========================================================
@@ -241,85 +271,52 @@ def get_performance_records():
 # =========================================================
 
 @performance.route(
-    "/api/performance/<int:performance_id>",
+    "/api/performance/<performance_id>",
     methods=["GET"]
 )
 def get_performance(performance_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    try:
-
-        cursor.execute("""
-            SELECT
-                performance.id,
-                performance.employee_id,
-                employees.employee_code,
-                employees.first_name,
-                employees.last_name,
-                performance.reviewer_id,
-                users.username AS reviewer_username,
-                performance.review_period,
-                performance.rating,
-                performance.strengths,
-                performance.areas_for_improvement,
-                performance.comments,
-                performance.status,
-                performance.created_at,
-                performance.updated_at
-
-            FROM performance
-
-            INNER JOIN employees
-                ON performance.employee_id = employees.id
-
-            LEFT JOIN users
-                ON performance.reviewer_id = users.id
-
-            WHERE performance.id = ?
-        """, (performance_id,))
-
-        record = cursor.fetchone()
-
-        if not record:
-            return jsonify({
-                "success": False,
-                "message": "Performance record not found"
-            }), 404
-
+    if not ObjectId.is_valid(performance_id):
         return jsonify({
-            "success": True,
-            "performance": {
-                "id": record["id"],
-                "employee_id": record["employee_id"],
-                "employee_code": record["employee_code"],
-                "first_name": record["first_name"],
-                "last_name": record["last_name"],
-                "reviewer_id": record["reviewer_id"],
-                "reviewer_username":
-                    record["reviewer_username"],
-                "review_period":
-                    record["review_period"],
-                "rating":
-                    record["rating"],
-                "strengths":
-                    record["strengths"],
-                "areas_for_improvement":
-                    record["areas_for_improvement"],
-                "comments":
-                    record["comments"],
-                "status":
-                    record["status"],
-                "created_at":
-                    record["created_at"],
-                "updated_at":
-                    record["updated_at"]
-            }
-        }), 200
+            "success": False,
+            "message": "Invalid performance ID"
+        }), 400
 
-    finally:
-        connection.close()
+    db = get_db()
+
+    performance_collection = db["performance"]
+    employees_collection = db["employees"]
+    users_collection = db["users"]
+
+    record = performance_collection.find_one({
+        "_id": ObjectId(performance_id)
+    })
+
+    if not record:
+        return jsonify({
+            "success": False,
+            "message": "Performance record not found"
+        }), 404
+
+    employee = employees_collection.find_one({
+        "_id": record["employee_id"]
+    })
+
+    reviewer = None
+
+    if record.get("reviewer_id"):
+        reviewer = users_collection.find_one({
+            "_id": record["reviewer_id"]
+        })
+
+    return jsonify({
+        "success": True,
+        "performance": performance_response(
+            record,
+            employee,
+            reviewer
+        )
+    }), 200
 
 
 # =========================================================
@@ -327,101 +324,73 @@ def get_performance(performance_id):
 # =========================================================
 
 @performance.route(
-    "/api/performance/employee/<int:employee_id>",
+    "/api/performance/employee/<employee_id>",
     methods=["GET"]
 )
 def get_employee_performance(employee_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    if not ObjectId.is_valid(employee_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid employee ID"
+        }), 400
 
-    try:
+    db = get_db()
 
-        cursor.execute("""
-            SELECT *
-            FROM employees
-            WHERE id = ?
-        """, (employee_id,))
+    performance_collection = db["performance"]
+    employees_collection = db["employees"]
+    users_collection = db["users"]
 
-        employee = cursor.fetchone()
+    employee_object_id = ObjectId(employee_id)
 
-        if not employee:
-            return jsonify({
-                "success": False,
-                "message": "Employee not found"
-            }), 404
+    # -----------------------------------------------------
+    # Check employee exists
+    # -----------------------------------------------------
 
-        cursor.execute("""
-            SELECT
-                performance.id,
-                performance.employee_id,
-                employees.employee_code,
-                employees.first_name,
-                employees.last_name,
-                performance.reviewer_id,
-                users.username AS reviewer_username,
-                performance.review_period,
-                performance.rating,
-                performance.strengths,
-                performance.areas_for_improvement,
-                performance.comments,
-                performance.status,
-                performance.created_at,
-                performance.updated_at
+    employee = employees_collection.find_one({
+        "_id": employee_object_id
+    })
 
-            FROM performance
+    if not employee:
+        return jsonify({
+            "success": False,
+            "message": "Employee not found"
+        }), 404
 
-            INNER JOIN employees
-                ON performance.employee_id = employees.id
+    # -----------------------------------------------------
+    # Get employee performance records
+    # -----------------------------------------------------
 
-            LEFT JOIN users
-                ON performance.reviewer_id = users.id
+    records = performance_collection.find({
+        "employee_id": employee_object_id
+    }).sort(
+        "_id",
+        -1
+    )
 
-            WHERE performance.employee_id = ?
+    performance_list = []
 
-            ORDER BY performance.id DESC
-        """, (employee_id,))
+    for record in records:
 
-        records = cursor.fetchall()
+        reviewer = None
 
-        performance_list = []
-
-        for record in records:
-
-            performance_list.append({
-                "id": record["id"],
-                "employee_id": record["employee_id"],
-                "employee_code": record["employee_code"],
-                "first_name": record["first_name"],
-                "last_name": record["last_name"],
-                "reviewer_id": record["reviewer_id"],
-                "reviewer_username":
-                    record["reviewer_username"],
-                "review_period":
-                    record["review_period"],
-                "rating":
-                    record["rating"],
-                "strengths":
-                    record["strengths"],
-                "areas_for_improvement":
-                    record["areas_for_improvement"],
-                "comments":
-                    record["comments"],
-                "status":
-                    record["status"],
-                "created_at":
-                    record["created_at"],
-                "updated_at":
-                    record["updated_at"]
+        if record.get("reviewer_id"):
+            reviewer = users_collection.find_one({
+                "_id": record["reviewer_id"]
             })
 
-        return jsonify({
-            "success": True,
-            "performance": performance_list
-        }), 200
+        performance_list.append(
+            performance_response(
+                record,
+                employee,
+                reviewer
+            )
+        )
 
-    finally:
-        connection.close()
+    return jsonify({
+        "success": True,
+        "performance": performance_list
+    }), 200
 
 
 # =========================================================
@@ -429,7 +398,7 @@ def get_employee_performance(employee_id):
 # =========================================================
 
 @performance.route(
-    "/api/performance/<int:performance_id>",
+    "/api/performance/<performance_id>",
     methods=["PUT"]
 )
 def update_performance(performance_id):
@@ -442,174 +411,191 @@ def update_performance(performance_id):
             "message": "Request body is required"
         }), 400
 
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    try:
-
-        cursor.execute("""
-            SELECT *
-            FROM performance
-            WHERE id = ?
-        """, (performance_id,))
-
-        record = cursor.fetchone()
-
-        if not record:
-            return jsonify({
-                "success": False,
-                "message": "Performance record not found"
-            }), 404
-
-        employee_id = data.get(
-            "employee_id",
-            record["employee_id"]
-        )
-
-        reviewer_id = data.get(
-            "reviewer_id",
-            record["reviewer_id"]
-        )
-
-        review_period = data.get(
-            "review_period",
-            record["review_period"]
-        )
-
-        rating = data.get(
-            "rating",
-            record["rating"]
-        )
-
-        strengths = data.get(
-            "strengths",
-            record["strengths"]
-        )
-
-        areas_for_improvement = data.get(
-            "areas_for_improvement",
-            record["areas_for_improvement"]
-        )
-
-        comments = data.get(
-            "comments",
-            record["comments"]
-        )
-
-        status = data.get(
-            "status",
-            record["status"]
-        )
-
-        # Check employee
-        cursor.execute("""
-            SELECT *
-            FROM employees
-            WHERE id = ?
-        """, (employee_id,))
-
-        employee = cursor.fetchone()
-
-        if not employee:
-            return jsonify({
-                "success": False,
-                "message": "Employee not found"
-            }), 404
-
-        # Check reviewer
-        if reviewer_id:
-
-            cursor.execute("""
-                SELECT *
-                FROM users
-                WHERE id = ?
-            """, (reviewer_id,))
-
-            reviewer = cursor.fetchone()
-
-            if not reviewer:
-                return jsonify({
-                    "success": False,
-                    "message": "Reviewer user not found"
-                }), 404
-
-        # Validate rating
-        try:
-            rating = float(rating)
-        except (TypeError, ValueError):
-            return jsonify({
-                "success": False,
-                "message": "Rating must be a number"
-            }), 400
-
-        if rating < 1 or rating > 5:
-            return jsonify({
-                "success": False,
-                "message": "Rating must be between 1 and 5"
-            }), 400
-
-        # Validate status
-        allowed_statuses = [
-            "Draft",
-            "Completed"
-        ]
-
-        if status not in allowed_statuses:
-            return jsonify({
-                "success": False,
-                "message": "Invalid performance status"
-            }), 400
-
-        updated_at = datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
-
-        cursor.execute("""
-            UPDATE performance
-            SET
-                employee_id = ?,
-                reviewer_id = ?,
-                review_period = ?,
-                rating = ?,
-                strengths = ?,
-                areas_for_improvement = ?,
-                comments = ?,
-                status = ?,
-                updated_at = ?
-            WHERE id = ?
-        """, (
-            employee_id,
-            reviewer_id,
-            review_period,
-            rating,
-            strengths,
-            areas_for_improvement,
-            comments,
-            status,
-            updated_at,
-            performance_id
-        ))
-
-        connection.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Performance record updated successfully",
-            "performance_id": performance_id,
-            "status": status
-        }), 200
-
-    except Exception as error:
-
-        connection.rollback()
-
+    if not ObjectId.is_valid(performance_id):
         return jsonify({
             "success": False,
-            "message": str(error)
-        }), 500
+            "message": "Invalid performance ID"
+        }), 400
 
-    finally:
-        connection.close()
+    db = get_db()
+
+    performance_collection = db["performance"]
+    employees_collection = db["employees"]
+    users_collection = db["users"]
+
+    # -----------------------------------------------------
+    # Check record exists
+    # -----------------------------------------------------
+
+    record = performance_collection.find_one({
+        "_id": ObjectId(performance_id)
+    })
+
+    if not record:
+        return jsonify({
+            "success": False,
+            "message": "Performance record not found"
+        }), 404
+
+    # -----------------------------------------------------
+    # Get updated values
+    # -----------------------------------------------------
+
+    employee_id = data.get(
+        "employee_id",
+        str(record["employee_id"])
+    )
+
+    reviewer_id = data.get(
+        "reviewer_id",
+        str(record["reviewer_id"])
+        if record.get("reviewer_id")
+        else None
+    )
+
+    review_period = data.get(
+        "review_period",
+        record.get("review_period")
+    )
+
+    rating = data.get(
+        "rating",
+        record.get("rating")
+    )
+
+    strengths = data.get(
+        "strengths",
+        record.get("strengths")
+    )
+
+    areas_for_improvement = data.get(
+        "areas_for_improvement",
+        record.get("areas_for_improvement")
+    )
+
+    comments = data.get(
+        "comments",
+        record.get("comments")
+    )
+
+    status = data.get(
+        "status",
+        record.get("status", "Completed")
+    )
+
+    # -----------------------------------------------------
+    # Validate employee
+    # -----------------------------------------------------
+
+    if not ObjectId.is_valid(employee_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid employee ID"
+        }), 400
+
+    employee = employees_collection.find_one({
+        "_id": ObjectId(employee_id)
+    })
+
+    if not employee:
+        return jsonify({
+            "success": False,
+            "message": "Employee not found"
+        }), 404
+
+    # -----------------------------------------------------
+    # Validate reviewer
+    # -----------------------------------------------------
+
+    reviewer_object_id = None
+
+    if reviewer_id:
+
+        if not ObjectId.is_valid(reviewer_id):
+            return jsonify({
+                "success": False,
+                "message": "Invalid reviewer ID"
+            }), 400
+
+        reviewer = users_collection.find_one({
+            "_id": ObjectId(reviewer_id)
+        })
+
+        if not reviewer:
+            return jsonify({
+                "success": False,
+                "message": "Reviewer user not found"
+            }), 404
+
+        reviewer_object_id = ObjectId(reviewer_id)
+
+    # -----------------------------------------------------
+    # Validate rating
+    # -----------------------------------------------------
+
+    try:
+        rating = float(rating)
+    except (TypeError, ValueError):
+        return jsonify({
+            "success": False,
+            "message": "Rating must be a number"
+        }), 400
+
+    if rating < 1 or rating > 5:
+        return jsonify({
+            "success": False,
+            "message": "Rating must be between 1 and 5"
+        }), 400
+
+    # -----------------------------------------------------
+    # Validate status
+    # -----------------------------------------------------
+
+    allowed_statuses = [
+        "Draft",
+        "Completed"
+    ]
+
+    if status not in allowed_statuses:
+        return jsonify({
+            "success": False,
+            "message": "Invalid performance status"
+        }), 400
+
+    # -----------------------------------------------------
+    # Update record
+    # -----------------------------------------------------
+
+    updated_at = datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+    performance_collection.update_one(
+        {
+            "_id": ObjectId(performance_id)
+        },
+        {
+            "$set": {
+                "employee_id": ObjectId(employee_id),
+                "reviewer_id": reviewer_object_id,
+                "review_period": review_period,
+                "rating": rating,
+                "strengths": strengths,
+                "areas_for_improvement":
+                    areas_for_improvement,
+                "comments": comments,
+                "status": status,
+                "updated_at": updated_at
+            }
+        }
+    )
+
+    return jsonify({
+        "success": True,
+        "message": "Performance record updated successfully",
+        "performance_id": performance_id,
+        "status": status
+    }), 200
 
 
 # =========================================================
@@ -617,50 +603,44 @@ def update_performance(performance_id):
 # =========================================================
 
 @performance.route(
-    "/api/performance/<int:performance_id>",
+    "/api/performance/<performance_id>",
     methods=["DELETE"]
 )
 def delete_performance(performance_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    try:
-
-        cursor.execute("""
-            SELECT *
-            FROM performance
-            WHERE id = ?
-        """, (performance_id,))
-
-        record = cursor.fetchone()
-
-        if not record:
-            return jsonify({
-                "success": False,
-                "message": "Performance record not found"
-            }), 404
-
-        cursor.execute("""
-            DELETE FROM performance
-            WHERE id = ?
-        """, (performance_id,))
-
-        connection.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Performance record deleted successfully"
-        }), 200
-
-    except Exception as error:
-
-        connection.rollback()
-
+    if not ObjectId.is_valid(performance_id):
         return jsonify({
             "success": False,
-            "message": str(error)
-        }), 500
+            "message": "Invalid performance ID"
+        }), 400
 
-    finally:
-        connection.close()
+    db = get_db()
+
+    performance_collection = db["performance"]
+
+    # -----------------------------------------------------
+    # Check record exists
+    # -----------------------------------------------------
+
+    record = performance_collection.find_one({
+        "_id": ObjectId(performance_id)
+    })
+
+    if not record:
+        return jsonify({
+            "success": False,
+            "message": "Performance record not found"
+        }), 404
+
+    # -----------------------------------------------------
+    # Delete record
+    # -----------------------------------------------------
+
+    performance_collection.delete_one({
+        "_id": ObjectId(performance_id)
+    })
+
+    return jsonify({
+        "success": True,
+        "message": "Performance record deleted successfully"
+    }), 200

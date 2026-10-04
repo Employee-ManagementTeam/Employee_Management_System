@@ -1,8 +1,36 @@
 from flask import Blueprint, request, jsonify
-from database import get_connection
+from database import get_db
+from bson import ObjectId
+from datetime import datetime
 
 
-notifications = Blueprint("notifications", __name__)
+notifications = Blueprint(
+    "notifications",
+    __name__
+)
+
+
+# ============================================================
+# HELPER FUNCTION
+# ============================================================
+
+def notification_response(record):
+
+    return {
+        "id": str(record["_id"]),
+        "user_id": str(record["user_id"]),
+        "title": record.get("title"),
+        "message": record.get("message"),
+        "notification_type":
+            record.get(
+                "notification_type",
+                "General"
+            ),
+        "is_read":
+            bool(record.get("is_read", False)),
+        "created_at":
+            record.get("created_at")
+    }
 
 
 # ============================================================
@@ -15,57 +43,51 @@ notifications = Blueprint("notifications", __name__)
 )
 def get_notifications():
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    user_id = request.args.get(
+        "user_id"
+    )
 
-    try:
+    db = get_db()
 
-        user_id = request.args.get("user_id")
+    notifications_collection = db[
+        "notifications"
+    ]
 
-        if user_id:
+    query = {}
 
-            cursor.execute("""
-                SELECT *
-                FROM notifications
-                WHERE user_id = ?
-                ORDER BY id DESC
-            """, (user_id,))
+    if user_id:
 
-        else:
+        if not ObjectId.is_valid(user_id):
 
-            cursor.execute("""
-                SELECT *
-                FROM notifications
-                ORDER BY id DESC
-            """)
+            return jsonify({
+                "success": False,
+                "message": "Invalid user ID"
+            }), 400
 
-        records = cursor.fetchall()
+        query["user_id"] = ObjectId(
+            user_id
+        )
 
-        notification_list = []
+    records = notifications_collection.find(
+        query
+    ).sort(
+        "_id",
+        -1
+    )
 
-        for record in records:
+    notification_list = []
 
-            notification_list.append({
-                "id": record["id"],
-                "user_id": record["user_id"],
-                "title": record["title"],
-                "message": record["message"],
-                "notification_type":
-                    record["notification_type"],
-                "is_read": bool(record["is_read"]),
-                "created_at":
-                    record["created_at"]
-            })
+    for record in records:
 
-        return jsonify({
-            "success": True,
-            "notifications":
-                notification_list
-        }), 200
+        notification_list.append(
+            notification_response(record)
+        )
 
-    finally:
-
-        connection.close()
+    return jsonify({
+        "success": True,
+        "notifications":
+            notification_list
+    }), 200
 
 
 # ============================================================
@@ -73,53 +95,47 @@ def get_notifications():
 # ============================================================
 
 @notifications.route(
-    "/api/notifications/<int:notification_id>",
+    "/api/notifications/<notification_id>",
     methods=["GET"]
 )
 def get_notification(notification_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    try:
-
-        cursor.execute("""
-            SELECT *
-            FROM notifications
-            WHERE id = ?
-        """, (notification_id,))
-
-        record = cursor.fetchone()
-
-        if not record:
-
-            return jsonify({
-                "success": False,
-                "message":
-                    "Notification not found"
-            }), 404
-
-        notification = {
-            "id": record["id"],
-            "user_id": record["user_id"],
-            "title": record["title"],
-            "message": record["message"],
-            "notification_type":
-                record["notification_type"],
-            "is_read": bool(record["is_read"]),
-            "created_at":
-                record["created_at"]
-        }
+    if not ObjectId.is_valid(
+        notification_id
+    ):
 
         return jsonify({
-            "success": True,
-            "notification":
-                notification
-        }), 200
+            "success": False,
+            "message": "Invalid notification ID"
+        }), 400
 
-    finally:
+    db = get_db()
 
-        connection.close()
+    notifications_collection = db[
+        "notifications"
+    ]
+
+    record = notifications_collection.find_one({
+        "_id": ObjectId(notification_id)
+    })
+
+    if not record:
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Notification not found"
+        }), 404
+
+    notification = notification_response(
+        record
+    )
+
+    return jsonify({
+        "success": True,
+        "notification":
+            notification
+    }), 200
 
 
 # ============================================================
@@ -138,12 +154,22 @@ def create_notification():
 
         return jsonify({
             "success": False,
-            "message": "Request body is required"
+            "message":
+                "Request body is required"
         }), 400
 
-    user_id = data.get("user_id")
-    title = data.get("title")
-    message = data.get("message")
+    user_id = data.get(
+        "user_id"
+    )
+
+    title = data.get(
+        "title"
+    )
+
+    message = data.get(
+        "message"
+    )
+
     notification_type = data.get(
         "notification_type",
         "General"
@@ -153,83 +179,106 @@ def create_notification():
 
         return jsonify({
             "success": False,
-            "message": "User ID is required"
+            "message":
+                "User ID is required"
         }), 400
 
     if not title:
 
         return jsonify({
             "success": False,
-            "message": "Title is required"
+            "message":
+                "Title is required"
         }), 400
 
     if not message:
 
         return jsonify({
             "success": False,
-            "message": "Message is required"
+            "message":
+                "Message is required"
         }), 400
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    if not ObjectId.is_valid(
+        user_id
+    ):
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Invalid user ID"
+        }), 400
+
+    db = get_db()
+
+    users_collection = db[
+        "users"
+    ]
+
+    notifications_collection = db[
+        "notifications"
+    ]
+
+    # --------------------------------------------------------
+    # Check user exists
+    # --------------------------------------------------------
+
+    user = users_collection.find_one({
+        "_id": ObjectId(user_id)
+    })
+
+    if not user:
+
+        return jsonify({
+            "success": False,
+            "message":
+                "User not found"
+        }), 404
 
     try:
 
-        # Check user exists
-        cursor.execute("""
-            SELECT id
-            FROM users
-            WHERE id = ?
-        """, (user_id,))
+        notification_record = {
 
-        user = cursor.fetchone()
+            "user_id":
+                ObjectId(user_id),
 
-        if not user:
-
-            return jsonify({
-                "success": False,
-                "message": "User not found"
-            }), 404
-
-        cursor.execute("""
-            INSERT INTO notifications (
-                user_id,
+            "title":
                 title,
+
+            "message":
                 message,
-                notification_type
-            )
-            VALUES (?, ?, ?, ?)
-        """, (
-            user_id,
-            title,
-            message,
-            notification_type
-        ))
 
-        connection.commit()
+            "notification_type":
+                notification_type,
 
-        notification_id = cursor.lastrowid
+            "is_read":
+                False,
+
+            "created_at":
+                datetime.now().strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+        }
+
+        result = notifications_collection.insert_one(
+            notification_record
+        )
 
         return jsonify({
             "success": True,
             "message":
                 "Notification created successfully",
             "notification_id":
-                notification_id
+                str(result.inserted_id)
         }), 201
 
     except Exception as error:
 
-        connection.rollback()
-
         return jsonify({
             "success": False,
-            "message": str(error)
+            "message":
+                str(error)
         }), 500
-
-    finally:
-
-        connection.close()
 
 
 # ============================================================
@@ -237,39 +286,54 @@ def create_notification():
 # ============================================================
 
 @notifications.route(
-    "/api/notifications/<int:notification_id>/read",
+    "/api/notifications/<notification_id>/read",
     methods=["PUT"]
 )
-def mark_notification_read(notification_id):
+def mark_notification_read(
+    notification_id
+):
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    if not ObjectId.is_valid(
+        notification_id
+    ):
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Invalid notification ID"
+        }), 400
+
+    db = get_db()
+
+    notifications_collection = db[
+        "notifications"
+    ]
+
+    record = notifications_collection.find_one({
+        "_id": ObjectId(notification_id)
+    })
+
+    if not record:
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Notification not found"
+        }), 404
 
     try:
 
-        cursor.execute("""
-            SELECT id
-            FROM notifications
-            WHERE id = ?
-        """, (notification_id,))
-
-        notification = cursor.fetchone()
-
-        if not notification:
-
-            return jsonify({
-                "success": False,
-                "message":
-                    "Notification not found"
-            }), 404
-
-        cursor.execute("""
-            UPDATE notifications
-            SET is_read = 1
-            WHERE id = ?
-        """, (notification_id,))
-
-        connection.commit()
+        notifications_collection.update_one(
+            {
+                "_id":
+                    ObjectId(notification_id)
+            },
+            {
+                "$set": {
+                    "is_read": True
+                }
+            }
+        )
 
         return jsonify({
             "success": True,
@@ -279,16 +343,11 @@ def mark_notification_read(notification_id):
 
     except Exception as error:
 
-        connection.rollback()
-
         return jsonify({
             "success": False,
-            "message": str(error)
+            "message":
+                str(error)
         }), 500
-
-    finally:
-
-        connection.close()
 
 
 # ============================================================
@@ -296,39 +355,54 @@ def mark_notification_read(notification_id):
 # ============================================================
 
 @notifications.route(
-    "/api/notifications/<int:notification_id>/unread",
+    "/api/notifications/<notification_id>/unread",
     methods=["PUT"]
 )
-def mark_notification_unread(notification_id):
+def mark_notification_unread(
+    notification_id
+):
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    if not ObjectId.is_valid(
+        notification_id
+    ):
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Invalid notification ID"
+        }), 400
+
+    db = get_db()
+
+    notifications_collection = db[
+        "notifications"
+    ]
+
+    record = notifications_collection.find_one({
+        "_id": ObjectId(notification_id)
+    })
+
+    if not record:
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Notification not found"
+        }), 404
 
     try:
 
-        cursor.execute("""
-            SELECT id
-            FROM notifications
-            WHERE id = ?
-        """, (notification_id,))
-
-        notification = cursor.fetchone()
-
-        if not notification:
-
-            return jsonify({
-                "success": False,
-                "message":
-                    "Notification not found"
-            }), 404
-
-        cursor.execute("""
-            UPDATE notifications
-            SET is_read = 0
-            WHERE id = ?
-        """, (notification_id,))
-
-        connection.commit()
+        notifications_collection.update_one(
+            {
+                "_id":
+                    ObjectId(notification_id)
+            },
+            {
+                "$set": {
+                    "is_read": False
+                }
+            }
+        )
 
         return jsonify({
             "success": True,
@@ -338,16 +412,11 @@ def mark_notification_unread(notification_id):
 
     except Exception as error:
 
-        connection.rollback()
-
         return jsonify({
             "success": False,
-            "message": str(error)
+            "message":
+                str(error)
         }), 500
-
-    finally:
-
-        connection.close()
 
 
 # ============================================================
@@ -355,38 +424,47 @@ def mark_notification_unread(notification_id):
 # ============================================================
 
 @notifications.route(
-    "/api/notifications/<int:notification_id>",
+    "/api/notifications/<notification_id>",
     methods=["DELETE"]
 )
-def delete_notification(notification_id):
+def delete_notification(
+    notification_id
+):
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    if not ObjectId.is_valid(
+        notification_id
+    ):
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Invalid notification ID"
+        }), 400
+
+    db = get_db()
+
+    notifications_collection = db[
+        "notifications"
+    ]
+
+    record = notifications_collection.find_one({
+        "_id": ObjectId(notification_id)
+    })
+
+    if not record:
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Notification not found"
+        }), 404
 
     try:
 
-        cursor.execute("""
-            SELECT id
-            FROM notifications
-            WHERE id = ?
-        """, (notification_id,))
-
-        notification = cursor.fetchone()
-
-        if not notification:
-
-            return jsonify({
-                "success": False,
-                "message":
-                    "Notification not found"
-            }), 404
-
-        cursor.execute("""
-            DELETE FROM notifications
-            WHERE id = ?
-        """, (notification_id,))
-
-        connection.commit()
+        notifications_collection.delete_one({
+            "_id":
+                ObjectId(notification_id)
+        })
 
         return jsonify({
             "success": True,
@@ -396,13 +474,8 @@ def delete_notification(notification_id):
 
     except Exception as error:
 
-        connection.rollback()
-
         return jsonify({
             "success": False,
-            "message": str(error)
+            "message":
+                str(error)
         }), 500
-
-    finally:
-
-        connection.close()

@@ -1,8 +1,43 @@
 from flask import Blueprint, request, jsonify
-from database import get_connection
+from database import get_db
+from bson import ObjectId
 
 
 reports = Blueprint("reports", __name__)
+
+
+# ============================================================
+# HELPER FUNCTIONS
+# ============================================================
+
+def valid_object_id(value):
+    return ObjectId.is_valid(value)
+
+
+def employee_details(db, employee_id):
+    """
+    Get employee details for report records.
+    """
+    if not employee_id:
+        return None
+
+    employee = db["employees"].find_one({
+        "_id": employee_id
+    })
+
+    if not employee:
+        return None
+
+    return {
+        "employee_code":
+            employee.get("employee_code", ""),
+        "employee_name":
+            (
+                str(employee.get("first_name", ""))
+                + " "
+                + str(employee.get("last_name", ""))
+            ).strip()
+    }
 
 
 # ============================================================
@@ -15,126 +50,135 @@ reports = Blueprint("reports", __name__)
 )
 def attendance_report():
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    employee_id = request.args.get(
+        "employee_id"
+    )
 
-    try:
+    start_date = request.args.get(
+        "start_date"
+    )
 
-        employee_id = request.args.get("employee_id")
-        start_date = request.args.get("start_date")
-        end_date = request.args.get("end_date")
+    end_date = request.args.get(
+        "end_date"
+    )
 
-        query = """
-            SELECT
-                attendance.id,
-                attendance.employee_id,
-                employees.employee_code,
-                employees.first_name,
-                employees.last_name,
-                attendance.attendance_date,
-                attendance.check_in,
-                attendance.check_out,
-                attendance.status
-            FROM attendance
-            INNER JOIN employees
-                ON attendance.employee_id = employees.id
-            WHERE 1 = 1
-        """
+    db = get_db()
 
-        parameters = []
+    attendance_collection = db[
+        "attendance"
+    ]
 
-        if employee_id:
+    query = {}
 
-            query += """
-                AND attendance.employee_id = ?
-            """
+    # --------------------------------------------------------
+    # Employee filter
+    # --------------------------------------------------------
 
-            parameters.append(employee_id)
+    if employee_id:
+
+        if not valid_object_id(employee_id):
+
+            return jsonify({
+                "success": False,
+                "message": "Invalid employee ID"
+            }), 400
+
+        query["employee_id"] = ObjectId(
+            employee_id
+        )
+
+    # --------------------------------------------------------
+    # Date filters
+    # --------------------------------------------------------
+
+    if start_date or end_date:
+
+        query["attendance_date"] = {}
 
         if start_date:
-
-            query += """
-                AND attendance.attendance_date >= ?
-            """
-
-            parameters.append(start_date)
+            query["attendance_date"]["$gte"] = start_date
 
         if end_date:
+            query["attendance_date"]["$lte"] = end_date
 
-            query += """
-                AND attendance.attendance_date <= ?
-            """
+    records = attendance_collection.find(
+        query
+    ).sort(
+        "attendance_date",
+        -1
+    )
 
-            parameters.append(end_date)
+    attendance_list = []
 
-        query += """
-            ORDER BY attendance.attendance_date DESC
-        """
+    for record in records:
 
-        cursor.execute(
-            query,
-            parameters
+        employee = employee_details(
+            db,
+            record.get("employee_id")
         )
 
-        records = cursor.fetchall()
+        if not employee:
+            continue
 
-        attendance_list = []
+        attendance_list.append({
+            "id":
+                str(record["_id"]),
 
-        for record in records:
+            "employee_id":
+                str(record["employee_id"]),
 
-            attendance_list.append({
-                "id": record["id"],
-                "employee_id":
-                    record["employee_id"],
-                "employee_code":
-                    record["employee_code"],
-                "employee_name":
-                    record["first_name"]
-                    + " "
-                    + record["last_name"],
-                "attendance_date":
-                    record["attendance_date"],
-                "check_in":
-                    record["check_in"],
-                "check_out":
-                    record["check_out"],
-                "status":
-                    record["status"]
-            })
+            "employee_code":
+                employee["employee_code"],
 
-        total_records = len(
+            "employee_name":
+                employee["employee_name"],
+
+            "attendance_date":
+                record.get("attendance_date"),
+
+            "check_in":
+                record.get("check_in"),
+
+            "check_out":
+                record.get("check_out"),
+
+            "status":
+                record.get("status")
+        })
+
+    total_records = len(
+        attendance_list
+    )
+
+    present_count = sum(
+        1
+        for item in attendance_list
+        if item["status"] == "Present"
+    )
+
+    absent_count = sum(
+        1
+        for item in attendance_list
+        if item["status"] == "Absent"
+    )
+
+    return jsonify({
+        "success": True,
+
+        "summary": {
+            "total_records":
+                total_records,
+
+            "present":
+                present_count,
+
+            "absent":
+                absent_count
+        },
+
+        "records":
             attendance_list
-        )
-
-        present_count = sum(
-            1
-            for item in attendance_list
-            if item["status"] == "Present"
-        )
-
-        absent_count = sum(
-            1
-            for item in attendance_list
-            if item["status"] == "Absent"
-        )
-
-        return jsonify({
-            "success": True,
-            "summary": {
-                "total_records":
-                    total_records,
-                "present":
-                    present_count,
-                "absent":
-                    absent_count
-            },
-            "records":
-                attendance_list
-        }), 200
-
-    finally:
-
-        connection.close()
+    }), 200
 
 
 # ============================================================
@@ -147,135 +191,140 @@ def attendance_report():
 )
 def leave_report():
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    employee_id = request.args.get(
+        "employee_id"
+    )
 
-    try:
+    status = request.args.get(
+        "status"
+    )
 
-        employee_id = request.args.get(
-            "employee_id"
+    db = get_db()
+
+    leaves_collection = db[
+        "leaves"
+    ]
+
+    query = {}
+
+    # --------------------------------------------------------
+    # Employee filter
+    # --------------------------------------------------------
+
+    if employee_id:
+
+        if not valid_object_id(employee_id):
+
+            return jsonify({
+                "success": False,
+                "message": "Invalid employee ID"
+            }), 400
+
+        query["employee_id"] = ObjectId(
+            employee_id
         )
 
-        status = request.args.get(
-            "status"
+    # --------------------------------------------------------
+    # Status filter
+    # --------------------------------------------------------
+
+    if status:
+
+        query["status"] = status
+
+    records = leaves_collection.find(
+        query
+    ).sort(
+        "_id",
+        -1
+    )
+
+    leave_list = []
+
+    for record in records:
+
+        employee = employee_details(
+            db,
+            record.get("employee_id")
         )
 
-        query = """
-            SELECT
-                leaves.id,
-                leaves.employee_id,
-                employees.employee_code,
-                employees.first_name,
-                employees.last_name,
-                leaves.leave_type,
-                leaves.start_date,
-                leaves.end_date,
-                leaves.reason,
-                leaves.status,
-                leaves.applied_at
-            FROM leaves
-            INNER JOIN employees
-                ON leaves.employee_id = employees.id
-            WHERE 1 = 1
-        """
+        if not employee:
+            continue
 
-        parameters = []
+        leave_list.append({
+            "id":
+                str(record["_id"]),
 
-        if employee_id:
+            "employee_id":
+                str(record["employee_id"]),
 
-            query += """
-                AND leaves.employee_id = ?
-            """
+            "employee_code":
+                employee["employee_code"],
 
-            parameters.append(employee_id)
+            "employee_name":
+                employee["employee_name"],
 
-        if status:
+            "leave_type":
+                record.get("leave_type"),
 
-            query += """
-                AND leaves.status = ?
-            """
+            "start_date":
+                record.get("start_date"),
 
-            parameters.append(status)
+            "end_date":
+                record.get("end_date"),
 
-        query += """
-            ORDER BY leaves.id DESC
-        """
+            "reason":
+                record.get("reason"),
 
-        cursor.execute(
-            query,
-            parameters
-        )
+            "status":
+                record.get("status"),
 
-        records = cursor.fetchall()
+            "applied_at":
+                record.get("applied_at")
+        })
 
-        leave_list = []
+    total = len(
+        leave_list
+    )
 
-        for record in records:
+    pending = sum(
+        1
+        for item in leave_list
+        if item["status"] == "Pending"
+    )
 
-            leave_list.append({
-                "id":
-                    record["id"],
-                "employee_id":
-                    record["employee_id"],
-                "employee_code":
-                    record["employee_code"],
-                "employee_name":
-                    record["first_name"]
-                    + " "
-                    + record["last_name"],
-                "leave_type":
-                    record["leave_type"],
-                "start_date":
-                    record["start_date"],
-                "end_date":
-                    record["end_date"],
-                "reason":
-                    record["reason"],
-                "status":
-                    record["status"],
-                "applied_at":
-                    record["applied_at"]
-            })
+    approved = sum(
+        1
+        for item in leave_list
+        if item["status"] == "Approved"
+    )
 
-        total = len(leave_list)
+    rejected = sum(
+        1
+        for item in leave_list
+        if item["status"] == "Rejected"
+    )
 
-        pending = sum(
-            1
-            for item in leave_list
-            if item["status"] == "Pending"
-        )
+    return jsonify({
+        "success": True,
 
-        approved = sum(
-            1
-            for item in leave_list
-            if item["status"] == "Approved"
-        )
+        "summary": {
+            "total":
+                total,
 
-        rejected = sum(
-            1
-            for item in leave_list
-            if item["status"] == "Rejected"
-        )
+            "pending":
+                pending,
 
-        return jsonify({
-            "success": True,
-            "summary": {
-                "total":
-                    total,
-                "pending":
-                    pending,
-                "approved":
-                    approved,
-                "rejected":
-                    rejected
-            },
-            "records":
-                leave_list
-        }), 200
+            "approved":
+                approved,
 
-    finally:
+            "rejected":
+                rejected
+        },
 
-        connection.close()
+        "records":
+            leave_list
+    }), 200
 
 
 # ============================================================
@@ -288,135 +337,140 @@ def leave_report():
 )
 def task_report():
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    employee_id = request.args.get(
+        "employee_id"
+    )
 
-    try:
+    status = request.args.get(
+        "status"
+    )
 
-        employee_id = request.args.get(
-            "employee_id"
+    db = get_db()
+
+    tasks_collection = db[
+        "tasks"
+    ]
+
+    query = {}
+
+    # --------------------------------------------------------
+    # Employee filter
+    # --------------------------------------------------------
+
+    if employee_id:
+
+        if not valid_object_id(employee_id):
+
+            return jsonify({
+                "success": False,
+                "message": "Invalid employee ID"
+            }), 400
+
+        query["employee_id"] = ObjectId(
+            employee_id
         )
 
-        status = request.args.get(
-            "status"
+    # --------------------------------------------------------
+    # Status filter
+    # --------------------------------------------------------
+
+    if status:
+
+        query["status"] = status
+
+    records = tasks_collection.find(
+        query
+    ).sort(
+        "_id",
+        -1
+    )
+
+    task_list = []
+
+    for record in records:
+
+        employee = employee_details(
+            db,
+            record.get("employee_id")
         )
 
-        query = """
-            SELECT
-                tasks.id,
-                tasks.employee_id,
-                employees.employee_code,
-                employees.first_name,
-                employees.last_name,
-                tasks.title,
-                tasks.description,
-                tasks.priority,
-                tasks.due_date,
-                tasks.status,
-                tasks.created_at
-            FROM tasks
-            INNER JOIN employees
-                ON tasks.employee_id = employees.id
-            WHERE 1 = 1
-        """
+        if not employee:
+            continue
 
-        parameters = []
+        task_list.append({
+            "id":
+                str(record["_id"]),
 
-        if employee_id:
+            "employee_id":
+                str(record["employee_id"]),
 
-            query += """
-                AND tasks.employee_id = ?
-            """
+            "employee_code":
+                employee["employee_code"],
 
-            parameters.append(employee_id)
+            "employee_name":
+                employee["employee_name"],
 
-        if status:
+            "title":
+                record.get("title"),
 
-            query += """
-                AND tasks.status = ?
-            """
+            "description":
+                record.get("description"),
 
-            parameters.append(status)
+            "priority":
+                record.get("priority"),
 
-        query += """
-            ORDER BY tasks.id DESC
-        """
+            "due_date":
+                record.get("due_date"),
 
-        cursor.execute(
-            query,
-            parameters
-        )
+            "status":
+                record.get("status"),
 
-        records = cursor.fetchall()
+            "created_at":
+                record.get("created_at")
+        })
 
-        task_list = []
+    total = len(
+        task_list
+    )
 
-        for record in records:
+    pending = sum(
+        1
+        for item in task_list
+        if item["status"] == "Pending"
+    )
 
-            task_list.append({
-                "id":
-                    record["id"],
-                "employee_id":
-                    record["employee_id"],
-                "employee_code":
-                    record["employee_code"],
-                "employee_name":
-                    record["first_name"]
-                    + " "
-                    + record["last_name"],
-                "title":
-                    record["title"],
-                "description":
-                    record["description"],
-                "priority":
-                    record["priority"],
-                "due_date":
-                    record["due_date"],
-                "status":
-                    record["status"],
-                "created_at":
-                    record["created_at"]
-            })
+    in_progress = sum(
+        1
+        for item in task_list
+        if item["status"] == "In Progress"
+    )
 
-        total = len(task_list)
+    completed = sum(
+        1
+        for item in task_list
+        if item["status"] == "Completed"
+    )
 
-        pending = sum(
-            1
-            for item in task_list
-            if item["status"] == "Pending"
-        )
+    return jsonify({
+        "success": True,
 
-        in_progress = sum(
-            1
-            for item in task_list
-            if item["status"] == "In Progress"
-        )
+        "summary": {
+            "total":
+                total,
 
-        completed = sum(
-            1
-            for item in task_list
-            if item["status"] == "Completed"
-        )
+            "pending":
+                pending,
 
-        return jsonify({
-            "success": True,
-            "summary": {
-                "total":
-                    total,
-                "pending":
-                    pending,
-                "in_progress":
-                    in_progress,
-                "completed":
-                    completed
-            },
-            "records":
-                task_list
-        }), 200
+            "in_progress":
+                in_progress,
 
-    finally:
+            "completed":
+                completed
+        },
 
-        connection.close()
+        "records":
+            task_list
+    }), 200
 
 
 # ============================================================
@@ -429,118 +483,126 @@ def task_report():
 )
 def performance_report():
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    employee_id = request.args.get(
+        "employee_id"
+    )
 
-    try:
+    db = get_db()
 
-        employee_id = request.args.get(
-            "employee_id"
+    performance_collection = db[
+        "performance"
+    ]
+
+    query = {}
+
+    # --------------------------------------------------------
+    # Employee filter
+    # --------------------------------------------------------
+
+    if employee_id:
+
+        if not valid_object_id(employee_id):
+
+            return jsonify({
+                "success": False,
+                "message": "Invalid employee ID"
+            }), 400
+
+        query["employee_id"] = ObjectId(
+            employee_id
         )
 
-        query = """
-            SELECT
-                performance.id,
-                performance.employee_id,
-                employees.employee_code,
-                employees.first_name,
-                employees.last_name,
-                performance.review_period,
-                performance.rating,
-                performance.strengths,
-                performance.areas_for_improvement,
-                performance.comments,
-                performance.status,
-                performance.created_at
-            FROM performance
-            INNER JOIN employees
-                ON performance.employee_id = employees.id
-            WHERE 1 = 1
-        """
+    records = performance_collection.find(
+        query
+    ).sort(
+        "_id",
+        -1
+    )
 
-        parameters = []
+    performance_list = []
 
-        if employee_id:
+    for record in records:
 
-            query += """
-                AND performance.employee_id = ?
-            """
-
-            parameters.append(employee_id)
-
-        query += """
-            ORDER BY performance.id DESC
-        """
-
-        cursor.execute(
-            query,
-            parameters
+        employee = employee_details(
+            db,
+            record.get("employee_id")
         )
 
-        records = cursor.fetchall()
+        if not employee:
+            continue
 
-        performance_list = []
+        performance_list.append({
+            "id":
+                str(record["_id"]),
 
-        for record in records:
+            "employee_id":
+                str(record["employee_id"]),
 
-            performance_list.append({
-                "id":
-                    record["id"],
-                "employee_id":
-                    record["employee_id"],
-                "employee_code":
-                    record["employee_code"],
-                "employee_name":
-                    record["first_name"]
-                    + " "
-                    + record["last_name"],
-                "review_period":
-                    record["review_period"],
-                "rating":
-                    record["rating"],
-                "strengths":
-                    record["strengths"],
-                "areas_for_improvement":
-                    record["areas_for_improvement"],
-                "comments":
-                    record["comments"],
-                "status":
-                    record["status"],
-                "created_at":
-                    record["created_at"]
-            })
+            "employee_code":
+                employee["employee_code"],
 
-        total_reviews = len(
-            performance_list
-        )
+            "employee_name":
+                employee["employee_name"],
 
-        average_rating = 0
+            "review_period":
+                record.get("review_period"),
 
-        if total_reviews > 0:
+            "rating":
+                record.get("rating"),
+
+            "strengths":
+                record.get("strengths"),
+
+            "areas_for_improvement":
+                record.get(
+                    "areas_for_improvement"
+                ),
+
+            "comments":
+                record.get("comments"),
+
+            "status":
+                record.get("status"),
+
+            "created_at":
+                record.get("created_at")
+        })
+
+    total_reviews = len(
+        performance_list
+    )
+
+    average_rating = 0
+
+    if total_reviews > 0:
+
+        ratings = [
+            float(item["rating"])
+            for item in performance_list
+            if item["rating"] is not None
+        ]
+
+        if ratings:
 
             average_rating = round(
-                sum(
-                    item["rating"]
-                    for item in performance_list
-                ) / total_reviews,
+                sum(ratings) / len(ratings),
                 2
             )
 
-        return jsonify({
-            "success": True,
-            "summary": {
-                "total_reviews":
-                    total_reviews,
-                "average_rating":
-                    average_rating
-            },
-            "records":
-                performance_list
-        }), 200
+    return jsonify({
+        "success": True,
 
-    finally:
+        "summary": {
+            "total_reviews":
+                total_reviews,
 
-        connection.close()
+            "average_rating":
+                average_rating
+        },
+
+        "records":
+            performance_list
+    }), 200
 
 
 # ============================================================
@@ -553,149 +615,152 @@ def performance_report():
 )
 def payroll_report():
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    employee_id = request.args.get(
+        "employee_id"
+    )
 
-    try:
+    payroll_month = request.args.get(
+        "payroll_month"
+    )
 
-        employee_id = request.args.get(
-            "employee_id"
+    db = get_db()
+
+    payroll_collection = db[
+        "payroll"
+    ]
+
+    query = {}
+
+    # --------------------------------------------------------
+    # Employee filter
+    # --------------------------------------------------------
+
+    if employee_id:
+
+        if not valid_object_id(employee_id):
+
+            return jsonify({
+                "success": False,
+                "message": "Invalid employee ID"
+            }), 400
+
+        query["employee_id"] = ObjectId(
+            employee_id
         )
 
-        payroll_month = request.args.get(
-            "payroll_month"
+    # --------------------------------------------------------
+    # Payroll month filter
+    # --------------------------------------------------------
+
+    if payroll_month:
+
+        query["payroll_month"] = payroll_month
+
+    records = payroll_collection.find(
+        query
+    ).sort(
+        "_id",
+        -1
+    )
+
+    payroll_list = []
+
+    for record in records:
+
+        employee = employee_details(
+            db,
+            record.get("employee_id")
         )
 
-        query = """
-            SELECT
-                payroll.id,
-                payroll.employee_id,
-                employees.employee_code,
-                employees.first_name,
-                employees.last_name,
-                payroll.payroll_month,
-                payroll.basic_salary,
-                payroll.allowances,
-                payroll.deductions,
-                payroll.gross_salary,
-                payroll.net_salary,
-                payroll.payment_status,
-                payroll.payment_date,
-                payroll.created_at
-            FROM payroll
-            INNER JOIN employees
-                ON payroll.employee_id = employees.id
-            WHERE 1 = 1
-        """
+        if not employee:
+            continue
 
-        parameters = []
+        payroll_list.append({
+            "id":
+                str(record["_id"]),
 
-        if employee_id:
+            "employee_id":
+                str(record["employee_id"]),
 
-            query += """
-                AND payroll.employee_id = ?
-            """
+            "employee_code":
+                employee["employee_code"],
 
-            parameters.append(employee_id)
+            "employee_name":
+                employee["employee_name"],
 
-        if payroll_month:
+            "payroll_month":
+                record.get("payroll_month"),
 
-            query += """
-                AND payroll.payroll_month = ?
-            """
+            "basic_salary":
+                record.get("basic_salary", 0),
 
-            parameters.append(payroll_month)
+            "allowances":
+                record.get("allowances", 0),
 
-        query += """
-            ORDER BY payroll.id DESC
-        """
+            "deductions":
+                record.get("deductions", 0),
 
-        cursor.execute(
-            query,
-            parameters
-        )
+            "gross_salary":
+                record.get("gross_salary", 0),
 
-        records = cursor.fetchall()
+            "net_salary":
+                record.get("net_salary", 0),
 
-        payroll_list = []
+            "payment_status":
+                record.get("payment_status"),
 
-        for record in records:
+            "payment_date":
+                record.get("payment_date"),
 
-            payroll_list.append({
-                "id":
-                    record["id"],
-                "employee_id":
-                    record["employee_id"],
-                "employee_code":
-                    record["employee_code"],
-                "employee_name":
-                    record["first_name"]
-                    + " "
-                    + record["last_name"],
-                "payroll_month":
-                    record["payroll_month"],
-                "basic_salary":
-                    record["basic_salary"],
-                "allowances":
-                    record["allowances"],
-                "deductions":
-                    record["deductions"],
-                "gross_salary":
-                    record["gross_salary"],
-                "net_salary":
-                    record["net_salary"],
-                "payment_status":
-                    record["payment_status"],
-                "payment_date":
-                    record["payment_date"],
-                "created_at":
-                    record["created_at"]
-            })
+            "created_at":
+                record.get("created_at")
+        })
 
-        total_records = len(
+    total_records = len(
+        payroll_list
+    )
+
+    total_gross = round(
+        sum(
+            float(item["gross_salary"] or 0)
+            for item in payroll_list
+        ),
+        2
+    )
+
+    total_net = round(
+        sum(
+            float(item["net_salary"] or 0)
+            for item in payroll_list
+        ),
+        2
+    )
+
+    total_deductions = round(
+        sum(
+            float(item["deductions"] or 0)
+            for item in payroll_list
+        ),
+        2
+    )
+
+    return jsonify({
+        "success": True,
+
+        "summary": {
+            "total_records":
+                total_records,
+
+            "total_gross_salary":
+                total_gross,
+
+            "total_net_salary":
+                total_net,
+
+            "total_deductions":
+                total_deductions
+        },
+
+        "records":
             payroll_list
-        )
-
-        total_gross = round(
-            sum(
-                item["gross_salary"]
-                for item in payroll_list
-            ),
-            2
-        )
-
-        total_net = round(
-            sum(
-                item["net_salary"]
-                for item in payroll_list
-            ),
-            2
-        )
-
-        total_deductions = round(
-            sum(
-                item["deductions"]
-                for item in payroll_list
-            ),
-            2
-        )
-
-        return jsonify({
-            "success": True,
-            "summary": {
-                "total_records":
-                    total_records,
-                "total_gross_salary":
-                    total_gross,
-                "total_net_salary":
-                    total_net,
-                "total_deductions":
-                    total_deductions
-            },
-            "records":
-                payroll_list
-        }), 200
-
-    finally:
-
-        connection.close()
+    }), 200

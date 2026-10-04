@@ -1,8 +1,27 @@
 from flask import Blueprint, request, jsonify
-from database import get_connection
+from database import get_db
+from bson import ObjectId
 
 
 departments = Blueprint("departments", __name__)
+
+
+# =========================================================
+# HELPER FUNCTION
+# =========================================================
+
+def department_response(department):
+    """
+    Convert MongoDB department document into JSON response format.
+    """
+
+    return {
+        "id": str(department["_id"]),
+        "department_name": department.get("department_name"),
+        "description": department.get("description"),
+        "status": department.get("status", "Active"),
+        "created_at": department.get("created_at")
+    }
 
 
 # =========================================================
@@ -12,7 +31,7 @@ departments = Blueprint("departments", __name__)
 @departments.route("/api/departments", methods=["POST"])
 def create_department():
 
-    data = request.get_json()
+    data = request.get_json() or {}
 
     department_name = data.get("department_name")
     description = data.get("description")
@@ -24,46 +43,42 @@ def create_department():
             "message": "Department name is required"
         }), 400
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    db = get_db()
+    departments_collection = db["departments"]
+
+    # Check duplicate department name
+    existing_department = departments_collection.find_one({
+        "department_name": department_name
+    })
+
+    if existing_department:
+        return jsonify({
+            "success": False,
+            "message": "Department name already exists"
+        }), 409
+
+    department = {
+        "department_name": department_name,
+        "description": description,
+        "status": status
+    }
 
     try:
 
-        cursor.execute("""
-            INSERT INTO departments (
-                department_name,
-                description,
-                status
-            )
-            VALUES (?, ?, ?)
-        """, (
-            department_name,
-            description,
-            status
-        ))
-
-        connection.commit()
-
-        department_id = cursor.lastrowid
+        result = departments_collection.insert_one(department)
 
         return jsonify({
             "success": True,
             "message": "Department created successfully",
-            "department_id": department_id
+            "department_id": str(result.inserted_id)
         }), 201
 
     except Exception as error:
-
-        connection.rollback()
 
         return jsonify({
             "success": False,
             "message": str(error)
         }), 409
-
-    finally:
-
-        connection.close()
 
 
 # =========================================================
@@ -73,30 +88,20 @@ def create_department():
 @departments.route("/api/departments", methods=["GET"])
 def get_departments():
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    db = get_db()
+    departments_collection = db["departments"]
 
-    cursor.execute("""
-        SELECT *
-        FROM departments
-        ORDER BY id DESC
-    """)
-
-    departments_data = cursor.fetchall()
-
-    connection.close()
+    departments_data = departments_collection.find().sort(
+        "_id",
+        -1
+    )
 
     departments_list = []
 
     for department in departments_data:
-
-        departments_list.append({
-            "id": department["id"],
-            "department_name": department["department_name"],
-            "description": department["description"],
-            "status": department["status"],
-            "created_at": department["created_at"]
-        })
+        departments_list.append(
+            department_response(department)
+        )
 
     return jsonify({
         "success": True,
@@ -108,21 +113,21 @@ def get_departments():
 # GET SINGLE DEPARTMENT
 # =========================================================
 
-@departments.route("/api/departments/<int:department_id>", methods=["GET"])
+@departments.route("/api/departments/<department_id>", methods=["GET"])
 def get_department(department_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    if not ObjectId.is_valid(department_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid department ID"
+        }), 400
 
-    cursor.execute("""
-        SELECT *
-        FROM departments
-        WHERE id = ?
-    """, (department_id,))
+    db = get_db()
+    departments_collection = db["departments"]
 
-    department = cursor.fetchone()
-
-    connection.close()
+    department = departments_collection.find_one({
+        "_id": ObjectId(department_id)
+    })
 
     if not department:
 
@@ -133,13 +138,7 @@ def get_department(department_id):
 
     return jsonify({
         "success": True,
-        "department": {
-            "id": department["id"],
-            "department_name": department["department_name"],
-            "description": department["description"],
-            "status": department["status"],
-            "created_at": department["created_at"]
-        }
+        "department": department_response(department)
     }), 200
 
 
@@ -147,25 +146,25 @@ def get_department(department_id):
 # UPDATE DEPARTMENT
 # =========================================================
 
-@departments.route("/api/departments/<int:department_id>", methods=["PUT"])
+@departments.route("/api/departments/<department_id>", methods=["PUT"])
 def update_department(department_id):
 
-    data = request.get_json()
+    if not ObjectId.is_valid(department_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid department ID"
+        }), 400
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    data = request.get_json() or {}
 
-    cursor.execute("""
-        SELECT *
-        FROM departments
-        WHERE id = ?
-    """, (department_id,))
+    db = get_db()
+    departments_collection = db["departments"]
 
-    department = cursor.fetchone()
+    department = departments_collection.find_one({
+        "_id": ObjectId(department_id)
+    })
 
     if not department:
-
-        connection.close()
 
         return jsonify({
             "success": False,
@@ -174,36 +173,49 @@ def update_department(department_id):
 
     department_name = data.get(
         "department_name",
-        department["department_name"]
+        department.get("department_name")
     )
 
     description = data.get(
         "description",
-        department["description"]
+        department.get("description")
     )
 
     status = data.get(
         "status",
-        department["status"]
+        department.get("status", "Active")
     )
+
+    # Check duplicate department name
+    duplicate = departments_collection.find_one({
+        "department_name": department_name,
+        "_id": {
+            "$ne": ObjectId(department_id)
+        }
+    })
+
+    if duplicate:
+        return jsonify({
+            "success": False,
+            "message": "Department name already exists"
+        }), 409
+
+    update_data = {
+        "department_name": department_name,
+        "description": description,
+        "status": status
+    }
 
     try:
 
-        cursor.execute("""
-            UPDATE departments
-            SET
-                department_name = ?,
-                description = ?,
-                status = ?
-            WHERE id = ?
-        """, (
-            department_name,
-            description,
-            status,
-            department_id
-        ))
-
-        connection.commit()
+        departments_collection.update_one(
+            {
+                "_id": ObjectId(department_id)
+            },
+            {
+                "$set": update_data
+            }
+        )
 
         return jsonify({
             "success": True,
@@ -212,39 +224,33 @@ def update_department(department_id):
 
     except Exception as error:
 
-        connection.rollback()
-
         return jsonify({
             "success": False,
             "message": str(error)
         }), 409
-
-    finally:
-
-        connection.close()
 
 
 # =========================================================
 # DELETE DEPARTMENT
 # =========================================================
 
-@departments.route("/api/departments/<int:department_id>", methods=["DELETE"])
+@departments.route("/api/departments/<department_id>", methods=["DELETE"])
 def delete_department(department_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    if not ObjectId.is_valid(department_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid department ID"
+        }), 400
 
-    cursor.execute("""
-        SELECT *
-        FROM departments
-        WHERE id = ?
-    """, (department_id,))
+    db = get_db()
+    departments_collection = db["departments"]
 
-    department = cursor.fetchone()
+    department = departments_collection.find_one({
+        "_id": ObjectId(department_id)
+    })
 
     if not department:
-
-        connection.close()
 
         return jsonify({
             "success": False,
@@ -253,12 +259,9 @@ def delete_department(department_id):
 
     try:
 
-        cursor.execute("""
-            DELETE FROM departments
-            WHERE id = ?
-        """, (department_id,))
-
-        connection.commit()
+        departments_collection.delete_one({
+            "_id": ObjectId(department_id)
+        })
 
         return jsonify({
             "success": True,
@@ -267,13 +270,7 @@ def delete_department(department_id):
 
     except Exception as error:
 
-        connection.rollback()
-
         return jsonify({
             "success": False,
             "message": str(error)
         }), 500
-
-    finally:
-
-        connection.close()

@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
-from database import get_connection
+from database import get_db
+from bson import ObjectId
 from datetime import datetime
 
 
@@ -7,6 +8,65 @@ payroll = Blueprint(
     "payroll",
     __name__
 )
+
+
+# =========================================================
+# HELPER FUNCTIONS
+# =========================================================
+
+def valid_object_id(value):
+    return ObjectId.is_valid(value)
+
+
+def salary_response(record):
+    return {
+        "id": str(record["_id"]),
+        "employee_id": str(record["employee_id"]),
+        "basic_salary": record.get("basic_salary", 0),
+        "housing_allowance": record.get("housing_allowance", 0),
+        "transport_allowance": record.get("transport_allowance", 0),
+        "other_allowance": record.get("other_allowance", 0),
+        "deductions": record.get("deductions", 0),
+        "effective_from": record.get("effective_from"),
+        "status": record.get("status"),
+        "created_at": record.get("created_at"),
+        "updated_at": record.get("updated_at")
+    }
+
+
+def payroll_response(record, employee=None):
+    response = {
+        "id": str(record["_id"]),
+        "employee_id": str(record["employee_id"]),
+        "salary_id": (
+            str(record["salary_id"])
+            if record.get("salary_id")
+            else None
+        ),
+        "payroll_month": record.get("payroll_month"),
+        "basic_salary": record.get("basic_salary", 0),
+        "allowances": record.get("allowances", 0),
+        "deductions": record.get("deductions", 0),
+        "gross_salary": record.get("gross_salary", 0),
+        "net_salary": record.get("net_salary", 0),
+        "payment_status": record.get("payment_status"),
+        "payment_date": record.get("payment_date"),
+        "created_at": record.get("created_at"),
+        "updated_at": record.get("updated_at")
+    }
+
+    if employee:
+        response["employee_code"] = employee.get(
+            "employee_code"
+        )
+        response["first_name"] = employee.get(
+            "first_name"
+        )
+        response["last_name"] = employee.get(
+            "last_name"
+        )
+
+    return response
 
 
 # =========================================================
@@ -22,187 +82,125 @@ def create_salary():
     data = request.get_json()
 
     if not data:
-
         return jsonify({
             "success": False,
             "message": "Request body is required"
         }), 400
 
-
-    employee_id = data.get(
-        "employee_id"
-    )
-
-    basic_salary = data.get(
-        "basic_salary"
-    )
-
+    employee_id = data.get("employee_id")
+    basic_salary = data.get("basic_salary")
     housing_allowance = data.get(
         "housing_allowance",
         0
     )
-
     transport_allowance = data.get(
         "transport_allowance",
         0
     )
-
     other_allowance = data.get(
         "other_allowance",
         0
     )
-
     deductions = data.get(
         "deductions",
         0
     )
-
     effective_from = data.get(
         "effective_from"
     )
-
     status = data.get(
         "status",
         "Active"
     )
 
-
     if not employee_id:
-
         return jsonify({
             "success": False,
             "message": "Employee ID is required"
         }), 400
 
-
     if basic_salary is None:
-
         return jsonify({
             "success": False,
             "message": "Basic salary is required"
         }), 400
 
+    if not valid_object_id(employee_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid employee ID"
+        }), 400
 
     try:
-
-        basic_salary = float(
-            basic_salary
-        )
-
-        housing_allowance = float(
-            housing_allowance
-        )
-
-        transport_allowance = float(
-            transport_allowance
-        )
-
-        other_allowance = float(
-            other_allowance
-        )
-
-        deductions = float(
-            deductions
-        )
-
+        basic_salary = float(basic_salary)
+        housing_allowance = float(housing_allowance)
+        transport_allowance = float(transport_allowance)
+        other_allowance = float(other_allowance)
+        deductions = float(deductions)
     except (TypeError, ValueError):
-
         return jsonify({
             "success": False,
             "message": "Salary values must be numbers"
         }), 400
 
-
     if basic_salary < 0:
-
         return jsonify({
             "success": False,
             "message": "Basic salary cannot be negative"
         }), 400
 
+    db = get_db()
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    employees_collection = db["employees"]
+    salary_collection = db["salary"]
 
+    employee = employees_collection.find_one({
+        "_id": ObjectId(employee_id)
+    })
+
+    if not employee:
+        return jsonify({
+            "success": False,
+            "message": "Employee not found"
+        }), 404
 
     try:
 
-        cursor.execute("""
-            SELECT *
-            FROM employees
-            WHERE id = ?
-        """, (employee_id,))
+        now = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
-        employee = cursor.fetchone()
+        salary_record = {
+            "employee_id": ObjectId(employee_id),
+            "basic_salary": basic_salary,
+            "housing_allowance": housing_allowance,
+            "transport_allowance": transport_allowance,
+            "other_allowance": other_allowance,
+            "deductions": deductions,
+            "effective_from": effective_from,
+            "status": status,
+            "created_at": now,
+            "updated_at": now
+        }
 
-
-        if not employee:
-
-            return jsonify({
-                "success": False,
-                "message": "Employee not found"
-            }), 404
-
-
-        cursor.execute("""
-            INSERT INTO salary (
-                employee_id,
-                basic_salary,
-                housing_allowance,
-                transport_allowance,
-                other_allowance,
-                deductions,
-                effective_from,
-                status
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            employee_id,
-            basic_salary,
-            housing_allowance,
-            transport_allowance,
-            other_allowance,
-            deductions,
-            effective_from,
-            status
-        ))
-
-
-        connection.commit()
-
-        salary_id = cursor.lastrowid
-
+        result = salary_collection.insert_one(
+            salary_record
+        )
 
         return jsonify({
-
             "success": True,
-
             "message":
                 "Salary record created successfully",
-
             "salary_id":
-                salary_id
-
+                str(result.inserted_id)
         }), 201
-
 
     except Exception as error:
 
-        connection.rollback()
-
         return jsonify({
-
             "success": False,
-
-            "message":
-                str(error)
-
+            "message": str(error)
         }), 500
-
-
-    finally:
-
-        connection.close()
 
 
 # =========================================================
@@ -215,105 +213,43 @@ def create_salary():
 )
 def get_salary_records():
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    db = get_db()
 
+    salary_collection = db["salary"]
+    employees_collection = db["employees"]
 
-    try:
+    records = salary_collection.find().sort(
+        "_id",
+        -1
+    )
 
-        cursor.execute("""
-            SELECT
-                salary.id,
-                salary.employee_id,
-                employees.employee_code,
-                employees.first_name,
-                employees.last_name,
-                salary.basic_salary,
-                salary.housing_allowance,
-                salary.transport_allowance,
-                salary.other_allowance,
-                salary.deductions,
-                salary.effective_from,
-                salary.status,
-                salary.created_at,
-                salary.updated_at
+    salary_list = []
 
-            FROM salary
+    for record in records:
 
-            INNER JOIN employees
-                ON salary.employee_id =
-                   employees.id
+        employee = employees_collection.find_one({
+            "_id": record["employee_id"]
+        })
 
-            ORDER BY salary.id DESC
-        """)
+        response = salary_response(record)
 
+        if employee:
+            response["employee_code"] = employee.get(
+                "employee_code"
+            )
+            response["first_name"] = employee.get(
+                "first_name"
+            )
+            response["last_name"] = employee.get(
+                "last_name"
+            )
 
-        records = cursor.fetchall()
+        salary_list.append(response)
 
-        salary_list = []
-
-
-        for record in records:
-
-            salary_list.append({
-
-                "id":
-                    record["id"],
-
-                "employee_id":
-                    record["employee_id"],
-
-                "employee_code":
-                    record["employee_code"],
-
-                "first_name":
-                    record["first_name"],
-
-                "last_name":
-                    record["last_name"],
-
-                "basic_salary":
-                    record["basic_salary"],
-
-                "housing_allowance":
-                    record["housing_allowance"],
-
-                "transport_allowance":
-                    record["transport_allowance"],
-
-                "other_allowance":
-                    record["other_allowance"],
-
-                "deductions":
-                    record["deductions"],
-
-                "effective_from":
-                    record["effective_from"],
-
-                "status":
-                    record["status"],
-
-                "created_at":
-                    record["created_at"],
-
-                "updated_at":
-                    record["updated_at"]
-            })
-
-
-        return jsonify({
-
-            "success": True,
-
-            "salary":
-                salary_list
-
-        }), 200
-
-
-    finally:
-
-        connection.close()
+    return jsonify({
+        "success": True,
+        "salary": salary_list
+    }), 200
 
 
 # =========================================================
@@ -321,103 +257,52 @@ def get_salary_records():
 # =========================================================
 
 @payroll.route(
-    "/api/salary/employee/<int:employee_id>",
+    "/api/salary/employee/<employee_id>",
     methods=["GET"]
 )
 def get_employee_salary(employee_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
-
-
-    try:
-
-        cursor.execute("""
-            SELECT *
-            FROM employees
-            WHERE id = ?
-        """, (employee_id,))
-
-        employee = cursor.fetchone()
-
-
-        if not employee:
-
-            return jsonify({
-
-                "success": False,
-
-                "message":
-                    "Employee not found"
-
-            }), 404
-
-
-        cursor.execute("""
-            SELECT *
-            FROM salary
-            WHERE employee_id = ?
-            ORDER BY id DESC
-        """, (employee_id,))
-
-
-        records = cursor.fetchall()
-
-        salary_list = []
-
-
-        for record in records:
-
-            salary_list.append({
-
-                "id":
-                    record["id"],
-
-                "employee_id":
-                    record["employee_id"],
-
-                "basic_salary":
-                    record["basic_salary"],
-
-                "housing_allowance":
-                    record["housing_allowance"],
-
-                "transport_allowance":
-                    record["transport_allowance"],
-
-                "other_allowance":
-                    record["other_allowance"],
-
-                "deductions":
-                    record["deductions"],
-
-                "effective_from":
-                    record["effective_from"],
-
-                "status":
-                    record["status"],
-
-                "created_at":
-                    record["created_at"],
-
-                "updated_at":
-                    record["updated_at"]
-            })
-
-
+    if not valid_object_id(employee_id):
         return jsonify({
+            "success": False,
+            "message": "Invalid employee ID"
+        }), 400
 
-            "success": True,
+    db = get_db()
 
-            "salary":
-                salary_list
+    employees_collection = db["employees"]
+    salary_collection = db["salary"]
 
-        }), 200
+    employee_object_id = ObjectId(employee_id)
 
+    employee = employees_collection.find_one({
+        "_id": employee_object_id
+    })
 
-    finally:
+    if not employee:
+        return jsonify({
+            "success": False,
+            "message": "Employee not found"
+        }), 404
 
-        connection.close()
+    records = salary_collection.find({
+        "employee_id": employee_object_id
+    }).sort(
+        "_id",
+        -1
+    )
+
+    salary_list = []
+
+    for record in records:
+        salary_list.append(
+            salary_response(record)
+        )
+
+    return jsonify({
+        "success": True,
+        "salary": salary_list
+    }), 200
 
 
 # =========================================================
@@ -425,216 +310,161 @@ def get_employee_salary(employee_id):
 # =========================================================
 
 @payroll.route(
-    "/api/salary/<int:salary_id>",
+    "/api/salary/<salary_id>",
     methods=["PUT"]
 )
 def update_salary(salary_id):
 
     data = request.get_json()
 
-
     if not data:
-
         return jsonify({
-
             "success": False,
-
-            "message":
-                "Request body is required"
-
+            "message": "Request body is required"
         }), 400
 
+    if not valid_object_id(salary_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid salary ID"
+        }), 400
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    db = get_db()
 
+    salary_collection = db["salary"]
+    employees_collection = db["employees"]
+
+    salary_object_id = ObjectId(salary_id)
+
+    record = salary_collection.find_one({
+        "_id": salary_object_id
+    })
+
+    if not record:
+        return jsonify({
+            "success": False,
+            "message": "Salary record not found"
+        }), 404
+
+    employee_id = data.get(
+        "employee_id",
+        str(record["employee_id"])
+    )
+
+    basic_salary = data.get(
+        "basic_salary",
+        record["basic_salary"]
+    )
+
+    housing_allowance = data.get(
+        "housing_allowance",
+        record["housing_allowance"]
+    )
+
+    transport_allowance = data.get(
+        "transport_allowance",
+        record["transport_allowance"]
+    )
+
+    other_allowance = data.get(
+        "other_allowance",
+        record["other_allowance"]
+    )
+
+    deductions = data.get(
+        "deductions",
+        record["deductions"]
+    )
+
+    effective_from = data.get(
+        "effective_from",
+        record.get("effective_from")
+    )
+
+    status = data.get(
+        "status",
+        record.get("status")
+    )
+
+    if not valid_object_id(employee_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid employee ID"
+        }), 400
 
     try:
 
-        cursor.execute("""
-            SELECT *
-            FROM salary
-            WHERE id = ?
-        """, (salary_id,))
+        basic_salary = float(basic_salary)
+        housing_allowance = float(housing_allowance)
+        transport_allowance = float(transport_allowance)
+        other_allowance = float(other_allowance)
+        deductions = float(deductions)
 
-        record = cursor.fetchone()
-
-
-        if not record:
-
-            return jsonify({
-
-                "success": False,
-
-                "message":
-                    "Salary record not found"
-
-            }), 404
-
-
-        employee_id = data.get(
-            "employee_id",
-            record["employee_id"]
-        )
-
-        basic_salary = data.get(
-            "basic_salary",
-            record["basic_salary"]
-        )
-
-        housing_allowance = data.get(
-            "housing_allowance",
-            record["housing_allowance"]
-        )
-
-        transport_allowance = data.get(
-            "transport_allowance",
-            record["transport_allowance"]
-        )
-
-        other_allowance = data.get(
-            "other_allowance",
-            record["other_allowance"]
-        )
-
-        deductions = data.get(
-            "deductions",
-            record["deductions"]
-        )
-
-        effective_from = data.get(
-            "effective_from",
-            record["effective_from"]
-        )
-
-        status = data.get(
-            "status",
-            record["status"]
-        )
-
-
-        try:
-
-            basic_salary = float(
-                basic_salary
-            )
-
-            housing_allowance = float(
-                housing_allowance
-            )
-
-            transport_allowance = float(
-                transport_allowance
-            )
-
-            other_allowance = float(
-                other_allowance
-            )
-
-            deductions = float(
-                deductions
-            )
-
-        except (TypeError, ValueError):
-
-            return jsonify({
-
-                "success": False,
-
-                "message":
-                    "Salary values must be numbers"
-
-            }), 400
-
-
-        cursor.execute("""
-            SELECT *
-            FROM employees
-            WHERE id = ?
-        """, (employee_id,))
-
-        employee = cursor.fetchone()
-
-
-        if not employee:
-
-            return jsonify({
-
-                "success": False,
-
-                "message":
-                    "Employee not found"
-
-            }), 404
-
-
-        updated_at = datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
-
-
-        cursor.execute("""
-            UPDATE salary
-
-            SET
-                employee_id = ?,
-                basic_salary = ?,
-                housing_allowance = ?,
-                transport_allowance = ?,
-                other_allowance = ?,
-                deductions = ?,
-                effective_from = ?,
-                status = ?,
-                updated_at = ?
-
-            WHERE id = ?
-        """, (
-            employee_id,
-            basic_salary,
-            housing_allowance,
-            transport_allowance,
-            other_allowance,
-            deductions,
-            effective_from,
-            status,
-            updated_at,
-            salary_id
-        ))
-
-
-        connection.commit()
-
+    except (TypeError, ValueError):
 
         return jsonify({
+            "success": False,
+            "message": "Salary values must be numbers"
+        }), 400
 
+    employee = employees_collection.find_one({
+        "_id": ObjectId(employee_id)
+    })
+
+    if not employee:
+        return jsonify({
+            "success": False,
+            "message": "Employee not found"
+        }), 404
+
+    updated_at = datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+    try:
+
+        salary_collection.update_one(
+            {
+                "_id": salary_object_id
+            },
+            {
+                "$set": {
+                    "employee_id":
+                        ObjectId(employee_id),
+                    "basic_salary":
+                        basic_salary,
+                    "housing_allowance":
+                        housing_allowance,
+                    "transport_allowance":
+                        transport_allowance,
+                    "other_allowance":
+                        other_allowance,
+                    "deductions":
+                        deductions,
+                    "effective_from":
+                        effective_from,
+                    "status":
+                        status,
+                    "updated_at":
+                        updated_at
+                }
+            }
+        )
+
+        return jsonify({
             "success": True,
-
             "message":
                 "Salary record updated successfully",
-
             "salary_id":
                 salary_id
-
         }), 200
-
 
     except Exception as error:
 
-        connection.rollback()
-
         return jsonify({
-
             "success": False,
-
-            "message":
-                str(error)
-
+            "message": str(error)
         }), 500
-
-
-    finally:
-
-        connection.close()
 
 
 # =========================================================
@@ -642,74 +472,51 @@ def update_salary(salary_id):
 # =========================================================
 
 @payroll.route(
-    "/api/salary/<int:salary_id>",
+    "/api/salary/<salary_id>",
     methods=["DELETE"]
 )
 def delete_salary(salary_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    if not valid_object_id(salary_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid salary ID"
+        }), 400
 
+    db = get_db()
+
+    salary_collection = db["salary"]
+
+    salary_object_id = ObjectId(salary_id)
+
+    record = salary_collection.find_one({
+        "_id": salary_object_id
+    })
+
+    if not record:
+        return jsonify({
+            "success": False,
+            "message": "Salary record not found"
+        }), 404
 
     try:
 
-        cursor.execute("""
-            SELECT *
-            FROM salary
-            WHERE id = ?
-        """, (salary_id,))
-
-        record = cursor.fetchone()
-
-
-        if not record:
-
-            return jsonify({
-
-                "success": False,
-
-                "message":
-                    "Salary record not found"
-
-            }), 404
-
-
-        cursor.execute("""
-            DELETE FROM salary
-            WHERE id = ?
-        """, (salary_id,))
-
-
-        connection.commit()
-
+        salary_collection.delete_one({
+            "_id": salary_object_id
+        })
 
         return jsonify({
-
             "success": True,
-
             "message":
                 "Salary record deleted successfully"
-
         }), 200
-
 
     except Exception as error:
 
-        connection.rollback()
-
         return jsonify({
-
             "success": False,
-
-            "message":
-                str(error)
-
+            "message": str(error)
         }), 500
-
-
-    finally:
-
-        connection.close()
 
 
 # =========================================================
@@ -724,18 +531,11 @@ def create_payroll():
 
     data = request.get_json()
 
-
     if not data:
-
         return jsonify({
-
             "success": False,
-
-            "message":
-                "Request body is required"
-
+            "message": "Request body is required"
         }), 400
-
 
     employee_id = data.get(
         "employee_id"
@@ -772,42 +572,35 @@ def create_payroll():
         "payment_date"
     )
 
-
     if not employee_id:
-
         return jsonify({
-
             "success": False,
-
-            "message":
-                "Employee ID is required"
-
+            "message": "Employee ID is required"
         }), 400
-
 
     if not payroll_month:
-
         return jsonify({
-
             "success": False,
-
-            "message":
-                "Payroll month is required"
-
+            "message": "Payroll month is required"
         }), 400
-
 
     if basic_salary is None:
-
         return jsonify({
-
             "success": False,
-
-            "message":
-                "Basic salary is required"
-
+            "message": "Basic salary is required"
         }), 400
 
+    if not valid_object_id(employee_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid employee ID"
+        }), 400
+
+    if salary_id and not valid_object_id(salary_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid salary ID"
+        }), 400
 
     try:
 
@@ -826,141 +619,75 @@ def create_payroll():
     except (TypeError, ValueError):
 
         return jsonify({
-
             "success": False,
-
             "message":
                 "Payroll values must be numbers"
-
         }), 400
-
 
     gross_salary = (
         basic_salary
         + allowances
     )
 
-
     net_salary = (
         gross_salary
         - deductions
     )
 
+    db = get_db()
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    employees_collection = db["employees"]
+    salary_collection = db["salary"]
+    payroll_collection = db["payroll"]
 
+    employee = employees_collection.find_one({
+        "_id": ObjectId(employee_id)
+    })
+
+    if not employee:
+        return jsonify({
+            "success": False,
+            "message": "Employee not found"
+        }), 404
+
+    if salary_id:
+
+        salary = salary_collection.find_one({
+            "_id": ObjectId(salary_id)
+        })
+
+        if not salary:
+            return jsonify({
+                "success": False,
+                "message": "Salary record not found"
+            }), 404
 
     try:
 
-        cursor.execute("""
-            SELECT *
-            FROM employees
-            WHERE id = ?
-        """, (employee_id,))
+        now = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
-        employee = cursor.fetchone()
+        payroll_record = {
+            "employee_id":
+                ObjectId(employee_id),
 
+            "salary_id":
+                ObjectId(salary_id)
+                if salary_id
+                else None,
 
-        if not employee:
-
-            return jsonify({
-
-                "success": False,
-
-                "message":
-                    "Employee not found"
-
-            }), 404
-
-
-        if salary_id:
-
-            cursor.execute("""
-                SELECT *
-                FROM salary
-                WHERE id = ?
-            """, (salary_id,))
-
-            salary = cursor.fetchone()
-
-
-            if not salary:
-
-                return jsonify({
-
-                    "success": False,
-
-                    "message":
-                        "Salary record not found"
-
-                }), 404
-
-
-        cursor.execute("""
-            INSERT INTO payroll (
-
-                employee_id,
-
-                salary_id,
-
+            "payroll_month":
                 payroll_month,
 
+            "basic_salary":
                 basic_salary,
 
+            "allowances":
                 allowances,
 
+            "deductions":
                 deductions,
-
-                gross_salary,
-
-                net_salary,
-
-                payment_status,
-
-                payment_date
-
-            )
-
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-
-            employee_id,
-
-            salary_id,
-
-            payroll_month,
-
-            basic_salary,
-
-            allowances,
-
-            deductions,
-
-            gross_salary,
-
-            net_salary,
-
-            payment_status,
-
-            payment_date
-        ))
-
-
-        connection.commit()
-
-        payroll_id = cursor.lastrowid
-
-
-        return jsonify({
-
-            "success": True,
-
-            "message":
-                "Payroll created successfully",
-
-            "payroll_id":
-                payroll_id,
 
             "gross_salary":
                 gross_salary,
@@ -969,28 +696,42 @@ def create_payroll():
                 net_salary,
 
             "payment_status":
+                payment_status,
+
+            "payment_date":
+                payment_date,
+
+            "created_at":
+                now,
+
+            "updated_at":
+                now
+        }
+
+        result = payroll_collection.insert_one(
+            payroll_record
+        )
+
+        return jsonify({
+            "success": True,
+            "message":
+                "Payroll created successfully",
+            "payroll_id":
+                str(result.inserted_id),
+            "gross_salary":
+                gross_salary,
+            "net_salary":
+                net_salary,
+            "payment_status":
                 payment_status
-
         }), 201
-
 
     except Exception as error:
 
-        connection.rollback()
-
         return jsonify({
-
             "success": False,
-
-            "message":
-                str(error)
-
+            "message": str(error)
         }), 500
-
-
-    finally:
-
-        connection.close()
 
 
 # =========================================================
@@ -1003,130 +744,35 @@ def create_payroll():
 )
 def get_all_payroll():
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    db = get_db()
 
+    payroll_collection = db["payroll"]
+    employees_collection = db["employees"]
 
-    try:
+    records = payroll_collection.find().sort(
+        "_id",
+        -1
+    )
 
-        cursor.execute("""
-            SELECT
+    payroll_list = []
 
-                payroll.id,
+    for record in records:
 
-                payroll.employee_id,
+        employee = employees_collection.find_one({
+            "_id": record["employee_id"]
+        })
 
-                employees.employee_code,
+        payroll_list.append(
+            payroll_response(
+                record,
+                employee
+            )
+        )
 
-                employees.first_name,
-
-                employees.last_name,
-
-                payroll.salary_id,
-
-                payroll.payroll_month,
-
-                payroll.basic_salary,
-
-                payroll.allowances,
-
-                payroll.deductions,
-
-                payroll.gross_salary,
-
-                payroll.net_salary,
-
-                payroll.payment_status,
-
-                payroll.payment_date,
-
-                payroll.created_at,
-
-                payroll.updated_at
-
-            FROM payroll
-
-            INNER JOIN employees
-
-                ON payroll.employee_id =
-                   employees.id
-
-            ORDER BY payroll.id DESC
-        """)
-
-
-        records = cursor.fetchall()
-
-        payroll_list = []
-
-
-        for record in records:
-
-            payroll_list.append({
-
-                "id":
-                    record["id"],
-
-                "employee_id":
-                    record["employee_id"],
-
-                "employee_code":
-                    record["employee_code"],
-
-                "first_name":
-                    record["first_name"],
-
-                "last_name":
-                    record["last_name"],
-
-                "salary_id":
-                    record["salary_id"],
-
-                "payroll_month":
-                    record["payroll_month"],
-
-                "basic_salary":
-                    record["basic_salary"],
-
-                "allowances":
-                    record["allowances"],
-
-                "deductions":
-                    record["deductions"],
-
-                "gross_salary":
-                    record["gross_salary"],
-
-                "net_salary":
-                    record["net_salary"],
-
-                "payment_status":
-                    record["payment_status"],
-
-                "payment_date":
-                    record["payment_date"],
-
-                "created_at":
-                    record["created_at"],
-
-                "updated_at":
-                    record["updated_at"]
-            })
-
-
-        return jsonify({
-
-            "success": True,
-
-            "payroll":
-                payroll_list
-
-        }), 200
-
-
-    finally:
-
-        connection.close()
+    return jsonify({
+        "success": True,
+        "payroll": payroll_list
+    }), 200
 
 
 # =========================================================
@@ -1134,139 +780,44 @@ def get_all_payroll():
 # =========================================================
 
 @payroll.route(
-    "/api/payroll/<int:payroll_id>",
+    "/api/payroll/<payroll_id>",
     methods=["GET"]
 )
 def get_single_payroll(payroll_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
-
-
-    try:
-
-        cursor.execute("""
-            SELECT
-
-                payroll.id,
-
-                payroll.employee_id,
-
-                employees.employee_code,
-
-                employees.first_name,
-
-                employees.last_name,
-
-                payroll.salary_id,
-
-                payroll.payroll_month,
-
-                payroll.basic_salary,
-
-                payroll.allowances,
-
-                payroll.deductions,
-
-                payroll.gross_salary,
-
-                payroll.net_salary,
-
-                payroll.payment_status,
-
-                payroll.payment_date,
-
-                payroll.created_at,
-
-                payroll.updated_at
-
-            FROM payroll
-
-            INNER JOIN employees
-
-                ON payroll.employee_id =
-                   employees.id
-
-            WHERE payroll.id = ?
-        """, (payroll_id,))
-
-
-        record = cursor.fetchone()
-
-
-        if not record:
-
-            return jsonify({
-
-                "success": False,
-
-                "message":
-                    "Payroll record not found"
-
-            }), 404
-
-
+    if not valid_object_id(payroll_id):
         return jsonify({
+            "success": False,
+            "message": "Invalid payroll ID"
+        }), 400
 
-            "success": True,
+    db = get_db()
 
-            "payroll": {
+    payroll_collection = db["payroll"]
+    employees_collection = db["employees"]
 
-                "id":
-                    record["id"],
+    record = payroll_collection.find_one({
+        "_id": ObjectId(payroll_id)
+    })
 
-                "employee_id":
-                    record["employee_id"],
+    if not record:
+        return jsonify({
+            "success": False,
+            "message": "Payroll record not found"
+        }), 404
 
-                "employee_code":
-                    record["employee_code"],
+    employee = employees_collection.find_one({
+        "_id": record["employee_id"]
+    })
 
-                "first_name":
-                    record["first_name"],
-
-                "last_name":
-                    record["last_name"],
-
-                "salary_id":
-                    record["salary_id"],
-
-                "payroll_month":
-                    record["payroll_month"],
-
-                "basic_salary":
-                    record["basic_salary"],
-
-                "allowances":
-                    record["allowances"],
-
-                "deductions":
-                    record["deductions"],
-
-                "gross_salary":
-                    record["gross_salary"],
-
-                "net_salary":
-                    record["net_salary"],
-
-                "payment_status":
-                    record["payment_status"],
-
-                "payment_date":
-                    record["payment_date"],
-
-                "created_at":
-                    record["created_at"],
-
-                "updated_at":
-                    record["updated_at"]
-            }
-
-        }), 200
-
-
-    finally:
-
-        connection.close()
+    return jsonify({
+        "success": True,
+        "payroll":
+            payroll_response(
+                record,
+                employee
+            )
+    }), 200
 
 
 # =========================================================
@@ -1274,112 +825,55 @@ def get_single_payroll(payroll_id):
 # =========================================================
 
 @payroll.route(
-    "/api/payroll/employee/<int:employee_id>",
+    "/api/payroll/employee/<employee_id>",
     methods=["GET"]
 )
 def get_employee_payroll(employee_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
-
-
-    try:
-
-        cursor.execute("""
-            SELECT *
-            FROM employees
-            WHERE id = ?
-        """, (employee_id,))
-
-        employee = cursor.fetchone()
-
-
-        if not employee:
-
-            return jsonify({
-
-                "success": False,
-
-                "message":
-                    "Employee not found"
-
-            }), 404
-
-
-        cursor.execute("""
-            SELECT *
-
-            FROM payroll
-
-            WHERE employee_id = ?
-
-            ORDER BY id DESC
-        """, (employee_id,))
-
-
-        records = cursor.fetchall()
-
-        payroll_list = []
-
-
-        for record in records:
-
-            payroll_list.append({
-
-                "id":
-                    record["id"],
-
-                "employee_id":
-                    record["employee_id"],
-
-                "salary_id":
-                    record["salary_id"],
-
-                "payroll_month":
-                    record["payroll_month"],
-
-                "basic_salary":
-                    record["basic_salary"],
-
-                "allowances":
-                    record["allowances"],
-
-                "deductions":
-                    record["deductions"],
-
-                "gross_salary":
-                    record["gross_salary"],
-
-                "net_salary":
-                    record["net_salary"],
-
-                "payment_status":
-                    record["payment_status"],
-
-                "payment_date":
-                    record["payment_date"],
-
-                "created_at":
-                    record["created_at"],
-
-                "updated_at":
-                    record["updated_at"]
-            })
-
-
+    if not valid_object_id(employee_id):
         return jsonify({
+            "success": False,
+            "message": "Invalid employee ID"
+        }), 400
 
-            "success": True,
+    db = get_db()
 
-            "payroll":
-                payroll_list
+    employees_collection = db["employees"]
+    payroll_collection = db["payroll"]
 
-        }), 200
+    employee_object_id = ObjectId(
+        employee_id
+    )
 
+    employee = employees_collection.find_one({
+        "_id": employee_object_id
+    })
 
-    finally:
+    if not employee:
+        return jsonify({
+            "success": False,
+            "message": "Employee not found"
+        }), 404
 
-        connection.close()
+    records = payroll_collection.find({
+        "employee_id": employee_object_id
+    }).sort(
+        "_id",
+        -1
+    )
+
+    payroll_list = []
+
+    for record in records:
+
+        payroll_list.append(
+            payroll_response(record)
+        )
+
+    return jsonify({
+        "success": True,
+        "payroll": payroll_list
+    }), 200
 
 
 # =========================================================
@@ -1387,276 +881,223 @@ def get_employee_payroll(employee_id):
 # =========================================================
 
 @payroll.route(
-    "/api/payroll/<int:payroll_id>",
+    "/api/payroll/<payroll_id>",
     methods=["PUT"]
 )
 def update_payroll(payroll_id):
 
     data = request.get_json()
 
-
     if not data:
-
         return jsonify({
-
             "success": False,
-
-            "message":
-                "Request body is required"
-
+            "message": "Request body is required"
         }), 400
 
+    if not valid_object_id(payroll_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid payroll ID"
+        }), 400
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    db = get_db()
 
+    payroll_collection = db["payroll"]
+    employees_collection = db["employees"]
+    salary_collection = db["salary"]
+
+    payroll_object_id = ObjectId(
+        payroll_id
+    )
+
+    record = payroll_collection.find_one({
+        "_id": payroll_object_id
+    })
+
+    if not record:
+        return jsonify({
+            "success": False,
+            "message": "Payroll record not found"
+        }), 404
+
+    employee_id = data.get(
+        "employee_id",
+        str(record["employee_id"])
+    )
+
+    salary_id = data.get(
+        "salary_id",
+        (
+            str(record["salary_id"])
+            if record.get("salary_id")
+            else None
+        )
+    )
+
+    payroll_month = data.get(
+        "payroll_month",
+        record["payroll_month"]
+    )
+
+    basic_salary = data.get(
+        "basic_salary",
+        record["basic_salary"]
+    )
+
+    allowances = data.get(
+        "allowances",
+        record["allowances"]
+    )
+
+    deductions = data.get(
+        "deductions",
+        record["deductions"]
+    )
+
+    payment_status = data.get(
+        "payment_status",
+        record["payment_status"]
+    )
+
+    payment_date = data.get(
+        "payment_date",
+        record.get("payment_date")
+    )
+
+    if not valid_object_id(employee_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid employee ID"
+        }), 400
+
+    if salary_id and not valid_object_id(salary_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid salary ID"
+        }), 400
 
     try:
 
-        cursor.execute("""
-            SELECT *
-            FROM payroll
-            WHERE id = ?
-        """, (payroll_id,))
-
-        record = cursor.fetchone()
-
-
-        if not record:
-
-            return jsonify({
-
-                "success": False,
-
-                "message":
-                    "Payroll record not found"
-
-            }), 404
-
-
-        employee_id = data.get(
-            "employee_id",
-            record["employee_id"]
-        )
-
-        salary_id = data.get(
-            "salary_id",
-            record["salary_id"]
-        )
-
-        payroll_month = data.get(
-            "payroll_month",
-            record["payroll_month"]
-        )
-
-        basic_salary = data.get(
-            "basic_salary",
-            record["basic_salary"]
-        )
-
-        allowances = data.get(
-            "allowances",
-            record["allowances"]
-        )
-
-        deductions = data.get(
-            "deductions",
-            record["deductions"]
-        )
-
-        payment_status = data.get(
-            "payment_status",
-            record["payment_status"]
-        )
-
-        payment_date = data.get(
-            "payment_date",
-            record["payment_date"]
-        )
-
-
-        try:
-
-            basic_salary = float(
-                basic_salary
-            )
-
-            allowances = float(
-                allowances
-            )
-
-            deductions = float(
-                deductions
-            )
-
-        except (TypeError, ValueError):
-
-            return jsonify({
-
-                "success": False,
-
-                "message":
-                    "Payroll values must be numbers"
-
-            }), 400
-
-
-        gross_salary = (
+        basic_salary = float(
             basic_salary
-            + allowances
         )
 
-
-        net_salary = (
-            gross_salary
-            - deductions
+        allowances = float(
+            allowances
         )
 
-
-        cursor.execute("""
-            SELECT *
-            FROM employees
-            WHERE id = ?
-        """, (employee_id,))
-
-        employee = cursor.fetchone()
-
-
-        if not employee:
-
-            return jsonify({
-
-                "success": False,
-
-                "message":
-                    "Employee not found"
-
-            }), 404
-
-
-        if salary_id:
-
-            cursor.execute("""
-                SELECT *
-                FROM salary
-                WHERE id = ?
-            """, (salary_id,))
-
-            salary = cursor.fetchone()
-
-
-            if not salary:
-
-                return jsonify({
-
-                    "success": False,
-
-                    "message":
-                        "Salary record not found"
-
-                }), 404
-
-
-        updated_at = datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"
+        deductions = float(
+            deductions
         )
 
-
-        cursor.execute("""
-            UPDATE payroll
-
-            SET
-
-                employee_id = ?,
-
-                salary_id = ?,
-
-                payroll_month = ?,
-
-                basic_salary = ?,
-
-                allowances = ?,
-
-                deductions = ?,
-
-                gross_salary = ?,
-
-                net_salary = ?,
-
-                payment_status = ?,
-
-                payment_date = ?,
-
-                updated_at = ?
-
-            WHERE id = ?
-        """, (
-
-            employee_id,
-
-            salary_id,
-
-            payroll_month,
-
-            basic_salary,
-
-            allowances,
-
-            deductions,
-
-            gross_salary,
-
-            net_salary,
-
-            payment_status,
-
-            payment_date,
-
-            updated_at,
-
-            payroll_id
-        ))
-
-
-        connection.commit()
-
+    except (TypeError, ValueError):
 
         return jsonify({
+            "success": False,
+            "message":
+                "Payroll values must be numbers"
+        }), 400
 
+    gross_salary = (
+        basic_salary
+        + allowances
+    )
+
+    net_salary = (
+        gross_salary
+        - deductions
+    )
+
+    employee = employees_collection.find_one({
+        "_id": ObjectId(employee_id)
+    })
+
+    if not employee:
+        return jsonify({
+            "success": False,
+            "message": "Employee not found"
+        }), 404
+
+    if salary_id:
+
+        salary = salary_collection.find_one({
+            "_id": ObjectId(salary_id)
+        })
+
+        if not salary:
+            return jsonify({
+                "success": False,
+                "message": "Salary record not found"
+            }), 404
+
+    updated_at = datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+    try:
+
+        payroll_collection.update_one(
+            {
+                "_id": payroll_object_id
+            },
+            {
+                "$set": {
+                    "employee_id":
+                        ObjectId(employee_id),
+
+                    "salary_id":
+                        ObjectId(salary_id)
+                        if salary_id
+                        else None,
+
+                    "payroll_month":
+                        payroll_month,
+
+                    "basic_salary":
+                        basic_salary,
+
+                    "allowances":
+                        allowances,
+
+                    "deductions":
+                        deductions,
+
+                    "gross_salary":
+                        gross_salary,
+
+                    "net_salary":
+                        net_salary,
+
+                    "payment_status":
+                        payment_status,
+
+                    "payment_date":
+                        payment_date,
+
+                    "updated_at":
+                        updated_at
+                }
+            }
+        )
+
+        return jsonify({
             "success": True,
-
             "message":
                 "Payroll updated successfully",
-
             "payroll_id":
                 payroll_id,
-
             "gross_salary":
                 gross_salary,
-
             "net_salary":
                 net_salary
-
         }), 200
-
 
     except Exception as error:
 
-        connection.rollback()
-
         return jsonify({
-
             "success": False,
-
-            "message":
-                str(error)
-
+            "message": str(error)
         }), 500
-
-
-    finally:
-
-        connection.close()
 
 
 # =========================================================
@@ -1664,71 +1105,50 @@ def update_payroll(payroll_id):
 # =========================================================
 
 @payroll.route(
-    "/api/payroll/<int:payroll_id>",
+    "/api/payroll/<payroll_id>",
     methods=["DELETE"]
 )
 def delete_payroll(payroll_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    if not valid_object_id(payroll_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid payroll ID"
+        }), 400
 
+    db = get_db()
+
+    payroll_collection = db["payroll"]
+
+    payroll_object_id = ObjectId(
+        payroll_id
+    )
+
+    record = payroll_collection.find_one({
+        "_id": payroll_object_id
+    })
+
+    if not record:
+        return jsonify({
+            "success": False,
+            "message": "Payroll record not found"
+        }), 404
 
     try:
 
-        cursor.execute("""
-            SELECT *
-            FROM payroll
-            WHERE id = ?
-        """, (payroll_id,))
-
-        record = cursor.fetchone()
-
-
-        if not record:
-
-            return jsonify({
-
-                "success": False,
-
-                "message":
-                    "Payroll record not found"
-
-            }), 404
-
-
-        cursor.execute("""
-            DELETE FROM payroll
-            WHERE id = ?
-        """, (payroll_id,))
-
-
-        connection.commit()
-
+        payroll_collection.delete_one({
+            "_id": payroll_object_id
+        })
 
         return jsonify({
-
             "success": True,
-
             "message":
                 "Payroll deleted successfully"
-
         }), 200
-
 
     except Exception as error:
 
-        connection.rollback()
-
         return jsonify({
-
             "success": False,
-
-            "message":
-                str(error)
-
+            "message": str(error)
         }), 500
-
-
-    finally:
-
-        connection.close()

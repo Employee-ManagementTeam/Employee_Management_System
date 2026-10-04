@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify, send_from_directory
-from database import get_connection
+from database import get_db
+from bson import ObjectId
 from werkzeug.utils import secure_filename
+from datetime import datetime
 import os
 import uuid
 
@@ -54,6 +56,47 @@ def allowed_file(filename):
         )[1].lower()
         in ALLOWED_EXTENSIONS
     )
+
+
+# =========================================================
+# HELPER FUNCTION
+# =========================================================
+
+def document_response(
+    document,
+    employee=None
+):
+
+    response = {
+        "id": str(document["_id"]),
+        "employee_id": str(
+            document["employee_id"]
+        ),
+        "document_name":
+            document.get("document_name"),
+        "document_type":
+            document.get("document_type"),
+        "file_name":
+            document.get("file_name"),
+        "created_at":
+            document.get("created_at")
+    }
+
+    if employee:
+
+        response["employee_code"] = employee.get(
+            "employee_code"
+        )
+
+        response["first_name"] = employee.get(
+            "first_name"
+        )
+
+        response["last_name"] = employee.get(
+            "last_name"
+        )
+
+    return response
 
 
 # =========================================================
@@ -119,88 +162,102 @@ def upload_document():
 
         return jsonify({
             "success": False,
-            "message":
-                "File type not allowed"
+            "message": "File type not allowed"
         }), 400
 
+    # -----------------------------------------------------
+    # Validate employee ID
+    # -----------------------------------------------------
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    if not ObjectId.is_valid(employee_id):
+
+        return jsonify({
+            "success": False,
+            "message": "Invalid employee ID"
+        }), 400
+
+    db = get_db()
+
+    employees_collection = db["employees"]
+    documents_collection = db["documents"]
+
+    # -----------------------------------------------------
+    # Check employee
+    # -----------------------------------------------------
+
+    employee = employees_collection.find_one({
+        "_id": ObjectId(employee_id)
+    })
+
+    if not employee:
+
+        return jsonify({
+            "success": False,
+            "message": "Employee not found"
+        }), 404
 
     try:
 
-        # Check employee
-        cursor.execute("""
-            SELECT *
-            FROM employees
-            WHERE id = ?
-        """, (employee_id,))
-
-        employee = cursor.fetchone()
-
-        if not employee:
-
-            return jsonify({
-                "success": False,
-                "message": "Employee not found"
-            }), 404
-
-
+        # -------------------------------------------------
         # Secure original filename
+        # -------------------------------------------------
+
         original_filename = secure_filename(
             file.filename
         )
 
-
+        # -------------------------------------------------
         # Get extension
+        # -------------------------------------------------
+
         extension = original_filename.rsplit(
             ".",
             1
         )[1].lower()
 
-
+        # -------------------------------------------------
         # Generate unique filename
+        # -------------------------------------------------
+
         unique_filename = (
             str(uuid.uuid4())
             + "."
             + extension
         )
 
-
+        # -------------------------------------------------
         # Complete file path
+        # -------------------------------------------------
+
         file_path = os.path.join(
             UPLOAD_DIR,
             unique_filename
         )
 
-
+        # -------------------------------------------------
         # Save physical file
+        # -------------------------------------------------
+
         file.save(file_path)
 
+        # -------------------------------------------------
+        # Save document information in MongoDB
+        # -------------------------------------------------
 
-        # Save document information
-        cursor.execute("""
-            INSERT INTO documents (
-                employee_id,
-                document_name,
-                document_type,
-                file_name,
-                file_path
+        document = {
+            "employee_id": ObjectId(employee_id),
+            "document_name": document_name,
+            "document_type": document_type,
+            "file_name": original_filename,
+            "file_path": unique_filename,
+            "created_at": datetime.now().strftime(
+                "%Y-%m-%d %H:%M:%S"
             )
-            VALUES (?, ?, ?, ?, ?)
-        """, (
-            employee_id,
-            document_name,
-            document_type,
-            original_filename,
-            unique_filename
-        ))
+        }
 
-
-        connection.commit()
-
-        document_id = cursor.lastrowid
-
+        result = documents_collection.insert_one(
+            document
+        )
 
         return jsonify({
 
@@ -210,10 +267,10 @@ def upload_document():
                 "Document uploaded successfully",
 
             "document_id":
-                document_id,
+                str(result.inserted_id),
 
             "employee_id":
-                int(employee_id),
+                employee_id,
 
             "document_name":
                 document_name,
@@ -226,10 +283,13 @@ def upload_document():
 
         }), 201
 
-
     except Exception as error:
 
-        connection.rollback()
+        # If database insertion fails after
+        # the physical file was saved, remove it.
+        if os.path.exists(file_path):
+
+            os.remove(file_path)
 
         return jsonify({
 
@@ -239,11 +299,6 @@ def upload_document():
                 str(error)
 
         }), 500
-
-
-    finally:
-
-        connection.close()
 
 
 # =========================================================
@@ -256,82 +311,39 @@ def upload_document():
 )
 def get_documents():
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    db = get_db()
 
-    try:
+    documents_collection = db["documents"]
+    employees_collection = db["employees"]
 
-        cursor.execute("""
-            SELECT
-                documents.id,
-                documents.employee_id,
-                employees.employee_code,
-                employees.first_name,
-                employees.last_name,
-                documents.document_name,
-                documents.document_type,
-                documents.file_name,
-                documents.created_at
+    records = documents_collection.find().sort(
+        "_id",
+        -1
+    )
 
-            FROM documents
+    document_list = []
 
-            INNER JOIN employees
-                ON documents.employee_id =
-                   employees.id
+    for document in records:
 
-            ORDER BY documents.id DESC
-        """)
+        employee = employees_collection.find_one({
+            "_id": document["employee_id"]
+        })
 
-        records = cursor.fetchall()
+        document_list.append(
+            document_response(
+                document,
+                employee
+            )
+        )
 
-        document_list = []
+    return jsonify({
 
-        for record in records:
+        "success": True,
 
-            document_list.append({
+        "documents":
+            document_list
 
-                "id":
-                    record["id"],
-
-                "employee_id":
-                    record["employee_id"],
-
-                "employee_code":
-                    record["employee_code"],
-
-                "first_name":
-                    record["first_name"],
-
-                "last_name":
-                    record["last_name"],
-
-                "document_name":
-                    record["document_name"],
-
-                "document_type":
-                    record["document_type"],
-
-                "file_name":
-                    record["file_name"],
-
-                "created_at":
-                    record["created_at"]
-            })
-
-
-        return jsonify({
-
-            "success": True,
-
-            "documents":
-                document_list
-
-        }), 200
-
-
-    finally:
-
-        connection.close()
+    }), 200
 
 
 # =========================================================
@@ -339,95 +351,79 @@ def get_documents():
 # =========================================================
 
 @documents.route(
-    "/api/documents/employee/<int:employee_id>",
+    "/api/documents/employee/<employee_id>",
     methods=["GET"]
 )
 def get_employee_documents(employee_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    try:
-
-        # Check employee
-        cursor.execute("""
-            SELECT *
-            FROM employees
-            WHERE id = ?
-        """, (employee_id,))
-
-        employee = cursor.fetchone()
-
-        if not employee:
-
-            return jsonify({
-
-                "success": False,
-
-                "message":
-                    "Employee not found"
-
-            }), 404
-
-
-        # Get documents
-        cursor.execute("""
-            SELECT
-                id,
-                employee_id,
-                document_name,
-                document_type,
-                file_name,
-                created_at
-
-            FROM documents
-
-            WHERE employee_id = ?
-
-            ORDER BY id DESC
-        """, (employee_id,))
-
-        records = cursor.fetchall()
-
-        document_list = []
-
-        for record in records:
-
-            document_list.append({
-
-                "id":
-                    record["id"],
-
-                "employee_id":
-                    record["employee_id"],
-
-                "document_name":
-                    record["document_name"],
-
-                "document_type":
-                    record["document_type"],
-
-                "file_name":
-                    record["file_name"],
-
-                "created_at":
-                    record["created_at"]
-            })
-
+    if not ObjectId.is_valid(employee_id):
 
         return jsonify({
 
-            "success": True,
+            "success": False,
 
-            "documents":
-                document_list
+            "message":
+                "Invalid employee ID"
 
-        }), 200
+        }), 400
 
+    db = get_db()
 
-    finally:
+    employees_collection = db["employees"]
+    documents_collection = db["documents"]
 
-        connection.close()
+    employee_object_id = ObjectId(
+        employee_id
+    )
+
+    # -----------------------------------------------------
+    # Check employee
+    # -----------------------------------------------------
+
+    employee = employees_collection.find_one({
+        "_id": employee_object_id
+    })
+
+    if not employee:
+
+        return jsonify({
+
+            "success": False,
+
+            "message":
+                "Employee not found"
+
+        }), 404
+
+    # -----------------------------------------------------
+    # Get documents
+    # -----------------------------------------------------
+
+    records = documents_collection.find({
+        "employee_id": employee_object_id
+    }).sort(
+        "_id",
+        -1
+    )
+
+    document_list = []
+
+    for document in records:
+
+        document_list.append(
+            document_response(
+                document
+            )
+        )
+
+    return jsonify({
+
+        "success": True,
+
+        "documents":
+            document_list
+
+    }), 200
 
 
 # =========================================================
@@ -435,47 +431,60 @@ def get_employee_documents(employee_id):
 # =========================================================
 
 @documents.route(
-    "/api/documents/download/<int:document_id>",
+    "/api/documents/download/<document_id>",
     methods=["GET"]
 )
 def download_document(document_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    if not ObjectId.is_valid(document_id):
 
-    try:
+        return jsonify({
 
-        cursor.execute("""
-            SELECT *
-            FROM documents
-            WHERE id = ?
-        """, (document_id,))
+            "success": False,
 
-        document = cursor.fetchone()
+            "message":
+                "Invalid document ID"
 
-        if not document:
+        }), 400
 
-            return jsonify({
+    db = get_db()
 
-                "success": False,
+    documents_collection = db["documents"]
 
-                "message":
-                    "Document not found"
+    document = documents_collection.find_one({
+        "_id": ObjectId(document_id)
+    })
 
-            }), 404
+    if not document:
 
-        file_name = document["file_path"]
+        return jsonify({
 
-    finally:
+            "success": False,
 
-        connection.close()
+            "message":
+                "Document not found"
 
+        }), 404
+
+    file_name = document.get(
+        "file_path"
+    )
+
+    if not file_name:
+
+        return jsonify({
+
+            "success": False,
+
+            "message":
+                "File path not found"
+
+        }), 404
 
     file_path = os.path.join(
         UPLOAD_DIR,
         file_name
     )
-
 
     if not os.path.exists(file_path):
 
@@ -487,7 +496,6 @@ def download_document(document_id):
                 "File not found"
 
         }), 404
-
 
     return send_from_directory(
 
@@ -505,60 +513,73 @@ def download_document(document_id):
 # =========================================================
 
 @documents.route(
-    "/api/documents/<int:document_id>",
+    "/api/documents/<document_id>",
     methods=["DELETE"]
 )
 def delete_document(document_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    if not ObjectId.is_valid(document_id):
+
+        return jsonify({
+
+            "success": False,
+
+            "message":
+                "Invalid document ID"
+
+        }), 400
+
+    db = get_db()
+
+    documents_collection = db["documents"]
+
+    # -----------------------------------------------------
+    # Check document exists
+    # -----------------------------------------------------
+
+    document = documents_collection.find_one({
+        "_id": ObjectId(document_id)
+    })
+
+    if not document:
+
+        return jsonify({
+
+            "success": False,
+
+            "message":
+                "Document not found"
+
+        }), 404
+
+    file_name = document.get(
+        "file_path"
+    )
 
     try:
 
-        cursor.execute("""
-            SELECT *
-            FROM documents
-            WHERE id = ?
-        """, (document_id,))
-
-        document = cursor.fetchone()
-
-        if not document:
-
-            return jsonify({
-
-                "success": False,
-
-                "message":
-                    "Document not found"
-
-            }), 404
-
-
-        file_name = document["file_path"]
-
-
+        # -------------------------------------------------
         # Delete database record
-        cursor.execute("""
-            DELETE FROM documents
-            WHERE id = ?
-        """, (document_id,))
+        # -------------------------------------------------
 
+        documents_collection.delete_one({
+            "_id": ObjectId(document_id)
+        })
 
-        connection.commit()
-
-
+        # -------------------------------------------------
         # Delete physical file
-        file_path = os.path.join(
-            UPLOAD_DIR,
-            file_name
-        )
+        # -------------------------------------------------
 
+        if file_name:
 
-        if os.path.exists(file_path):
+            file_path = os.path.join(
+                UPLOAD_DIR,
+                file_name
+            )
 
-            os.remove(file_path)
+            if os.path.exists(file_path):
 
+                os.remove(file_path)
 
         return jsonify({
 
@@ -569,10 +590,7 @@ def delete_document(document_id):
 
         }), 200
 
-
     except Exception as error:
-
-        connection.rollback()
 
         return jsonify({
 
@@ -582,8 +600,3 @@ def delete_document(document_id):
                 str(error)
 
         }), 500
-
-
-    finally:
-
-        connection.close()

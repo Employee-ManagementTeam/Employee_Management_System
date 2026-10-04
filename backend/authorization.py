@@ -2,7 +2,8 @@ from functools import wraps
 
 from flask import request, jsonify
 
-from database import get_connection
+from database import get_db
+from bson import ObjectId
 
 
 PUBLIC_ROUTES = {
@@ -56,50 +57,57 @@ ROLE_PERMISSIONS = {
 }
 
 
+# ============================================================
+# GET CURRENT USER
+# ============================================================
+
 def get_current_user():
 
-    user_id = request.headers.get("X-User-ID")
+    user_id = request.headers.get(
+        "X-User-ID"
+    )
 
     if not user_id:
         return None
 
-    try:
-        user_id = int(user_id)
-
-    except ValueError:
+    # MongoDB uses ObjectId instead of SQLite integer IDs
+    if not ObjectId.is_valid(user_id):
         return None
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    db = get_db()
+
+    users_collection = db["users"]
 
     try:
 
-        cursor.execute("""
-            SELECT
-                id,
-                username,
-                email,
-                role
-            FROM users
-            WHERE id = ?
-        """, (user_id,))
-
-        user = cursor.fetchone()
+        user = users_collection.find_one({
+            "_id": ObjectId(user_id)
+        })
 
         if not user:
             return None
 
         return {
-            "id": user["id"],
-            "username": user["username"],
-            "email": user["email"],
-            "role": user["role"]
+            "id":
+                str(user["_id"]),
+
+            "username":
+                user.get("username"),
+
+            "email":
+                user.get("email"),
+
+            "role":
+                user.get("role")
         }
 
-    finally:
+    except Exception:
+        return None
 
-        connection.close()
 
+# ============================================================
+# GET API MODULE
+# ============================================================
 
 def get_api_module(path):
 
@@ -142,20 +150,40 @@ def get_api_module(path):
     return None
 
 
+# ============================================================
+# CHECK AUTHORIZATION
+# ============================================================
+
 def check_authorization():
 
     path = request.path
 
+    # --------------------------------------------------------
+    # Public routes
+    # --------------------------------------------------------
+
     if path in PUBLIC_ROUTES:
         return None
 
+    # --------------------------------------------------------
+    # Non-API routes
+    # --------------------------------------------------------
+
     if not path.startswith("/api/"):
         return None
+
+    # --------------------------------------------------------
+    # Identify API module
+    # --------------------------------------------------------
 
     module = get_api_module(path)
 
     if module is None:
         return None
+
+    # --------------------------------------------------------
+    # Get logged-in user
+    # --------------------------------------------------------
 
     user = get_current_user()
 
@@ -167,6 +195,10 @@ def check_authorization():
                 "Authentication required. "
                 "Provide a valid X-User-ID header."
         }), 401
+
+    # --------------------------------------------------------
+    # Check role permission
+    # --------------------------------------------------------
 
     role = user["role"]
 
@@ -185,10 +217,18 @@ def check_authorization():
                 "to access this module."
         }), 403
 
+    # --------------------------------------------------------
+    # Store current user in request
+    # --------------------------------------------------------
+
     request.current_user = user
 
     return None
 
+
+# ============================================================
+# ROLE-BASED AUTHORIZATION DECORATOR
+# ============================================================
 
 def roles_required(*allowed_roles):
 
@@ -217,7 +257,10 @@ def roles_required(*allowed_roles):
 
             request.current_user = user
 
-            return function(*args, **kwargs)
+            return function(
+                *args,
+                **kwargs
+            )
 
         return wrapper
 

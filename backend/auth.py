@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from database import get_connection
+from database import get_db
 
 auth = Blueprint("auth", __name__)
 
@@ -28,34 +28,40 @@ def register():
             "message": "Invalid role"
         }), 400
 
-    password_hash = generate_password_hash(password)
+    db = get_db()
+    users_collection = db["users"]
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    # Check whether username or email already exists
+    existing_user = users_collection.find_one({
+        "$or": [
+            {"username": username},
+            {"email": email}
+        ]
+    })
 
-    try:
-        cursor.execute("""
-            INSERT INTO users (username, email, password, role)
-            VALUES (?, ?, ?, ?)
-        """, (username, email, password_hash, role))
-
-        connection.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Registration successful"
-        }), 201
-
-    except Exception:
-        connection.rollback()
-
+    if existing_user:
         return jsonify({
             "success": False,
             "message": "Username or email already exists"
         }), 409
 
-    finally:
-        connection.close()
+    # Hash password before storing it
+    password_hash = generate_password_hash(password)
+
+    user = {
+        "username": username,
+        "email": email,
+        "password": password_hash,
+        "role": role
+    }
+
+    result = users_collection.insert_one(user)
+
+    return jsonify({
+        "success": True,
+        "message": "Registration successful",
+        "user_id": str(result.inserted_id)
+    }), 201
 
 
 @auth.route("/api/login", methods=["POST"])
@@ -71,23 +77,19 @@ def login():
             "message": "Email and password are required"
         }), 400
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    db = get_db()
+    users_collection = db["users"]
 
-    cursor.execute(
-        "SELECT * FROM users WHERE email = ?",
-        (email,)
-    )
-
-    user = cursor.fetchone()
-    connection.close()
+    user = users_collection.find_one({
+        "email": email
+    })
 
     if user and check_password_hash(user["password"], password):
         return jsonify({
             "success": True,
             "message": "Login successful",
             "user": {
-                "id": user["id"],
+                "id": str(user["_id"]),
                 "username": user["username"],
                 "email": user["email"],
                 "role": user["role"]

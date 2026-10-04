@@ -1,9 +1,42 @@
 from flask import Blueprint, request, jsonify
-from database import get_connection
+from database import get_db
+from bson import ObjectId
 from datetime import datetime
+from authorization import get_current_user
 
 
 leaves = Blueprint("leaves", __name__)
+
+
+# =========================================================
+# HELPER FUNCTION
+# =========================================================
+
+def leave_response(leave):
+    return {
+        "id": str(leave["_id"]),
+        "employee_id": str(leave["employee_id"]),
+        "leave_type": leave.get("leave_type"),
+        "start_date": leave.get("start_date"),
+        "end_date": leave.get("end_date"),
+        "reason": leave.get("reason"),
+        "status": leave.get("status", "Pending"),
+        "approved_by": (
+            str(leave["approved_by"])
+            if leave.get("approved_by")
+            else None
+        ),
+        "created_at": leave.get("created_at")
+    }
+
+
+def employee_belongs_to_user(employee, user):
+    employee_user_id = employee.get("user_id")
+
+    if not employee_user_id:
+        return False
+
+    return str(employee_user_id) == str(user["id"])
 
 
 # =========================================================
@@ -11,15 +44,10 @@ leaves = Blueprint("leaves", __name__)
 # =========================================================
 
 @leaves.route("/api/leaves", methods=["POST"])
-def apply_leave():
+def create_leave():
 
-    data = request.get_json()
-
-    if not data:
-        return jsonify({
-            "success": False,
-            "message": "Request body is required"
-        }), 400
+    user = get_current_user()
+    data = request.get_json() or {}
 
     employee_id = data.get("employee_id")
     leave_type = data.get("leave_type")
@@ -27,221 +55,225 @@ def apply_leave():
     end_date = data.get("end_date")
     reason = data.get("reason")
 
-    # Required fields
     if not employee_id:
         return jsonify({
             "success": False,
             "message": "Employee ID is required"
         }), 400
 
-    if not leave_type:
+    if not ObjectId.is_valid(employee_id):
         return jsonify({
             "success": False,
-            "message": "Leave type is required"
+            "message": "Invalid employee ID"
         }), 400
 
-    if not start_date:
+    if not leave_type or not start_date or not end_date:
         return jsonify({
             "success": False,
-            "message": "Start date is required"
+            "message": (
+                "Leave type, start date and end date are required"
+            )
         }), 400
 
-    if not end_date:
+    db = get_db()
+
+    employees_collection = db["employees"]
+    leaves_collection = db["leaves"]
+
+    employee = employees_collection.find_one({
+        "_id": ObjectId(employee_id)
+    })
+
+    if not employee:
         return jsonify({
             "success": False,
-            "message": "End date is required"
-        }), 400
+            "message": "Employee not found"
+        }), 404
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    # Employee can apply only for their own leave
+    if user["role"] == "employee":
+
+        if not employee_belongs_to_user(employee, user):
+
+            return jsonify({
+                "success": False,
+                "message": (
+                    "Access denied. You can only "
+                    "apply leave for yourself."
+                )
+            }), 403
+
+    # Check overlapping pending/approved leave
+    overlapping_leave = leaves_collection.find_one({
+        "employee_id": ObjectId(employee_id),
+        "status": {
+            "$in": ["Pending", "Approved"]
+        },
+        "start_date": {
+            "$lte": end_date
+        },
+        "end_date": {
+            "$gte": start_date
+        }
+    })
+
+    if overlapping_leave:
+
+        return jsonify({
+            "success": False,
+            "message": (
+                "Employee already has a leave "
+                "request for the selected dates"
+            )
+        }), 409
+
+    leave_record = {
+        "employee_id": ObjectId(employee_id),
+        "leave_type": leave_type,
+        "start_date": start_date,
+        "end_date": end_date,
+        "reason": reason,
+        "status": "Pending",
+        "approved_by": None,
+        "created_at": datetime.now().isoformat()
+    }
 
     try:
 
-        # -------------------------------------------------
-        # Check employee exists
-        # -------------------------------------------------
-
-        cursor.execute("""
-            SELECT *
-            FROM employees
-            WHERE id = ?
-        """, (employee_id,))
-
-        employee = cursor.fetchone()
-
-        if not employee:
-            return jsonify({
-                "success": False,
-                "message": "Employee not found"
-            }), 404
-
-        # -------------------------------------------------
-        # Validate dates
-        # -------------------------------------------------
-
-        try:
-
-            start = datetime.strptime(
-                start_date,
-                "%Y-%m-%d"
-            )
-
-            end = datetime.strptime(
-                end_date,
-                "%Y-%m-%d"
-            )
-
-        except ValueError:
-
-            return jsonify({
-                "success": False,
-                "message": "Date format must be YYYY-MM-DD"
-            }), 400
-
-        if end < start:
-
-            return jsonify({
-                "success": False,
-                "message": "End date cannot be before start date"
-            }), 400
-
-        # -------------------------------------------------
-        # Check overlapping leave
-        # -------------------------------------------------
-
-        cursor.execute("""
-            SELECT *
-            FROM leaves
-            WHERE employee_id = ?
-            AND status != 'Rejected'
-            AND start_date <= ?
-            AND end_date >= ?
-        """, (
-            employee_id,
-            end_date,
-            start_date
-        ))
-
-        existing_leave = cursor.fetchone()
-
-        if existing_leave:
-
-            return jsonify({
-                "success": False,
-                "message": "Employee already has leave during these dates"
-            }), 409
-
-        # -------------------------------------------------
-        # Insert leave
-        # -------------------------------------------------
-
-        cursor.execute("""
-            INSERT INTO leaves (
-                employee_id,
-                leave_type,
-                start_date,
-                end_date,
-                reason,
-                status
-            )
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            employee_id,
-            leave_type,
-            start_date,
-            end_date,
-            reason,
-            "Pending"
-        ))
-
-        connection.commit()
-
-        leave_id = cursor.lastrowid
+        result = leaves_collection.insert_one(
+            leave_record
+        )
 
         return jsonify({
             "success": True,
-            "message": "Leave application submitted successfully",
-            "leave_id": leave_id,
-            "status": "Pending"
+            "message": "Leave request submitted successfully",
+            "leave_id": str(result.inserted_id)
         }), 201
 
     except Exception as error:
-
-        connection.rollback()
 
         return jsonify({
             "success": False,
             "message": str(error)
         }), 500
 
-    finally:
-
-        connection.close()
-
 
 # =========================================================
-# GET ALL LEAVES
+# GET LEAVES
 # =========================================================
 
 @leaves.route("/api/leaves", methods=["GET"])
 def get_leaves():
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    user = get_current_user()
+
+    db = get_db()
+
+    leaves_collection = db["leaves"]
+    employees_collection = db["employees"]
 
     try:
 
-        cursor.execute("""
-            SELECT
-                leaves.id,
-                leaves.employee_id,
-                employees.employee_code,
-                employees.first_name,
-                employees.last_name,
-                leaves.leave_type,
-                leaves.start_date,
-                leaves.end_date,
-                leaves.reason,
-                leaves.status,
-                leaves.applied_at,
-                leaves.approved_by,
-                leaves.approved_at
-            FROM leaves
-            INNER JOIN employees
-                ON leaves.employee_id = employees.id
-            ORDER BY leaves.id DESC
-        """)
+        if user["role"] == "employee":
 
-        leave_data = cursor.fetchall()
+            employee = employees_collection.find_one({
+                "user_id": ObjectId(user["id"])
+            })
+
+            if not employee:
+
+                return jsonify({
+                    "success": True,
+                    "leaves": []
+                }), 200
+
+            leave_data = leaves_collection.find({
+                "employee_id": employee["_id"]
+            }).sort("_id", -1)
+
+        else:
+
+            leave_data = leaves_collection.find().sort(
+                "_id",
+                -1
+            )
 
         leaves_list = []
 
         for leave in leave_data:
 
-            leaves_list.append({
-                "id": leave["id"],
-                "employee_id": leave["employee_id"],
-                "employee_code": leave["employee_code"],
-                "first_name": leave["first_name"],
-                "last_name": leave["last_name"],
-                "leave_type": leave["leave_type"],
-                "start_date": leave["start_date"],
-                "end_date": leave["end_date"],
-                "reason": leave["reason"],
-                "status": leave["status"],
-                "applied_at": leave["applied_at"],
-                "approved_by": leave["approved_by"],
-                "approved_at": leave["approved_at"]
-            })
+            leaves_list.append(
+                leave_response(leave)
+            )
 
         return jsonify({
             "success": True,
             "leaves": leaves_list
         }), 200
 
-    finally:
+    except Exception as error:
 
-        connection.close()
+        return jsonify({
+            "success": False,
+            "message": str(error)
+        }), 500
+
+
+# =========================================================
+# GET SINGLE LEAVE
+# =========================================================
+
+@leaves.route("/api/leaves/<leave_id>", methods=["GET"])
+def get_leave(leave_id):
+
+    if not ObjectId.is_valid(leave_id):
+
+        return jsonify({
+            "success": False,
+            "message": "Invalid leave ID"
+        }), 400
+
+    db = get_db()
+
+    leaves_collection = db["leaves"]
+    employees_collection = db["employees"]
+
+    leave = leaves_collection.find_one({
+        "_id": ObjectId(leave_id)
+    })
+
+    if not leave:
+
+        return jsonify({
+            "success": False,
+            "message": "Leave request not found"
+        }), 404
+
+    user = get_current_user()
+
+    if user["role"] == "employee":
+
+        employee = employees_collection.find_one({
+            "_id": leave["employee_id"]
+        })
+
+        if not employee or not employee_belongs_to_user(
+            employee,
+            user
+        ):
+
+            return jsonify({
+                "success": False,
+                "message": (
+                    "Access denied. You can only view "
+                    "your own leave requests."
+                )
+            }), 403
+
+    return jsonify({
+        "success": True,
+        "leave": leave_response(leave)
+    }), 200
 
 
 # =========================================================
@@ -249,91 +281,79 @@ def get_leaves():
 # =========================================================
 
 @leaves.route(
-    "/api/leaves/employee/<int:employee_id>",
+    "/api/leaves/employee/<employee_id>",
     methods=["GET"]
 )
 def get_employee_leaves(employee_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    if not ObjectId.is_valid(employee_id):
 
-    try:
+        return jsonify({
+            "success": False,
+            "message": "Invalid employee ID"
+        }), 400
 
-        # -------------------------------------------------
-        # Check employee exists
-        # -------------------------------------------------
+    db = get_db()
 
-        cursor.execute("""
-            SELECT *
-            FROM employees
-            WHERE id = ?
-        """, (employee_id,))
+    employees_collection = db["employees"]
+    leaves_collection = db["leaves"]
 
-        employee = cursor.fetchone()
+    employee = employees_collection.find_one({
+        "_id": ObjectId(employee_id)
+    })
 
-        if not employee:
+    if not employee:
+
+        return jsonify({
+            "success": False,
+            "message": "Employee not found"
+        }), 404
+
+    user = get_current_user()
+
+    if user["role"] == "employee":
+
+        if not employee_belongs_to_user(
+            employee,
+            user
+        ):
 
             return jsonify({
                 "success": False,
-                "message": "Employee not found"
-            }), 404
+                "message": (
+                    "Access denied. You can only view "
+                    "your own leave requests."
+                )
+            }), 403
 
-        # -------------------------------------------------
-        # Get employee leaves
-        # -------------------------------------------------
+    try:
 
-        cursor.execute("""
-            SELECT
-                leaves.id,
-                leaves.employee_id,
-                employees.employee_code,
-                employees.first_name,
-                employees.last_name,
-                leaves.leave_type,
-                leaves.start_date,
-                leaves.end_date,
-                leaves.reason,
-                leaves.status,
-                leaves.applied_at,
-                leaves.approved_by,
-                leaves.approved_at
-            FROM leaves
-            INNER JOIN employees
-                ON leaves.employee_id = employees.id
-            WHERE leaves.employee_id = ?
-            ORDER BY leaves.id DESC
-        """, (employee_id,))
-
-        leave_data = cursor.fetchall()
+        leave_data = leaves_collection.find({
+            "employee_id": ObjectId(employee_id)
+        }).sort(
+            "_id",
+            -1
+        )
 
         leaves_list = []
 
         for leave in leave_data:
 
-            leaves_list.append({
-                "id": leave["id"],
-                "employee_id": leave["employee_id"],
-                "employee_code": leave["employee_code"],
-                "first_name": leave["first_name"],
-                "last_name": leave["last_name"],
-                "leave_type": leave["leave_type"],
-                "start_date": leave["start_date"],
-                "end_date": leave["end_date"],
-                "reason": leave["reason"],
-                "status": leave["status"],
-                "applied_at": leave["applied_at"],
-                "approved_by": leave["approved_by"],
-                "approved_at": leave["approved_at"]
-            })
+            leaves_list.append(
+                leave_response(leave)
+            )
 
         return jsonify({
             "success": True,
             "leaves": leaves_list
         }), 200
 
-    finally:
+    except Exception as error:
 
-        connection.close()
+        return jsonify({
+            "success": False,
+            "message": str(error)
+        }), 500
 
 
 # =========================================================
@@ -341,116 +361,70 @@ def get_employee_leaves(employee_id):
 # =========================================================
 
 @leaves.route(
-    "/api/leaves/<int:leave_id>/approve",
+    "/api/leaves/<leave_id>/approve",
     methods=["PUT"]
 )
 def approve_leave(leave_id):
 
-    data = request.get_json(silent=True) or {}
+    user = get_current_user()
 
-    approved_by = data.get("approved_by")
-
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    try:
-
-        # -------------------------------------------------
-        # Check leave exists
-        # -------------------------------------------------
-
-        cursor.execute("""
-            SELECT *
-            FROM leaves
-            WHERE id = ?
-        """, (leave_id,))
-
-        leave = cursor.fetchone()
-
-        if not leave:
-
-            return jsonify({
-                "success": False,
-                "message": "Leave application not found"
-            }), 404
-
-        # -------------------------------------------------
-        # Check current status
-        # -------------------------------------------------
-
-        if leave["status"] != "Pending":
-
-            return jsonify({
-                "success": False,
-                "message": "Only pending leave applications can be approved"
-            }), 409
-
-        # -------------------------------------------------
-        # Validate approver if provided
-        # -------------------------------------------------
-
-        if approved_by:
-
-            cursor.execute("""
-                SELECT *
-                FROM users
-                WHERE id = ?
-            """, (approved_by,))
-
-            approver = cursor.fetchone()
-
-            if not approver:
-
-                return jsonify({
-                    "success": False,
-                    "message": "Approver user not found"
-                }), 404
-
-        # -------------------------------------------------
-        # Approve leave
-        # -------------------------------------------------
-
-        approved_at = datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
-
-        cursor.execute("""
-            UPDATE leaves
-            SET
-                status = ?,
-                approved_by = ?,
-                approved_at = ?
-            WHERE id = ?
-        """, (
-            "Approved",
-            approved_by,
-            approved_at,
-            leave_id
-        ))
-
-        connection.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Leave approved successfully",
-            "leave_id": leave_id,
-            "status": "Approved",
-            "approved_by": approved_by,
-            "approved_at": approved_at
-        }), 200
-
-    except Exception as error:
-
-        connection.rollback()
+    if user["role"] not in ["admin", "manager"]:
 
         return jsonify({
             "success": False,
-            "message": str(error)
-        }), 500
+            "message": (
+                "Only admin or manager can approve leaves"
+            )
+        }), 403
 
-    finally:
+    if not ObjectId.is_valid(leave_id):
 
-        connection.close()
+        return jsonify({
+            "success": False,
+            "message": "Invalid leave ID"
+        }), 400
+
+    db = get_db()
+
+    leaves_collection = db["leaves"]
+
+    leave = leaves_collection.find_one({
+        "_id": ObjectId(leave_id)
+    })
+
+    if not leave:
+
+        return jsonify({
+            "success": False,
+            "message": "Leave request not found"
+        }), 404
+
+    if leave.get("status") != "Pending":
+
+        return jsonify({
+            "success": False,
+            "message": (
+                "Only pending leave requests "
+                "can be approved"
+            )
+        }), 409
+
+    leaves_collection.update_one(
+        {
+            "_id": ObjectId(leave_id)
+        },
+        {
+            "$set": {
+                "status": "Approved",
+                "approved_by": ObjectId(user["id"])
+            }
+        }
+    )
+
+    return jsonify({
+        "success": True,
+        "message": "Leave approved successfully"
+    }), 200
 
 
 # =========================================================
@@ -458,113 +432,67 @@ def approve_leave(leave_id):
 # =========================================================
 
 @leaves.route(
-    "/api/leaves/<int:leave_id>/reject",
+    "/api/leaves/<leave_id>/reject",
     methods=["PUT"]
 )
 def reject_leave(leave_id):
 
-    data = request.get_json(silent=True) or {}
+    user = get_current_user()
 
-    approved_by = data.get("approved_by")
-
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    try:
-
-        # -------------------------------------------------
-        # Check leave exists
-        # -------------------------------------------------
-
-        cursor.execute("""
-            SELECT *
-            FROM leaves
-            WHERE id = ?
-        """, (leave_id,))
-
-        leave = cursor.fetchone()
-
-        if not leave:
-
-            return jsonify({
-                "success": False,
-                "message": "Leave application not found"
-            }), 404
-
-        # -------------------------------------------------
-        # Check current status
-        # -------------------------------------------------
-
-        if leave["status"] != "Pending":
-
-            return jsonify({
-                "success": False,
-                "message": "Only pending leave applications can be rejected"
-            }), 409
-
-        # -------------------------------------------------
-        # Validate approver if provided
-        # -------------------------------------------------
-
-        if approved_by:
-
-            cursor.execute("""
-                SELECT *
-                FROM users
-                WHERE id = ?
-            """, (approved_by,))
-
-            approver = cursor.fetchone()
-
-            if not approver:
-
-                return jsonify({
-                    "success": False,
-                    "message": "Approver user not found"
-                }), 404
-
-        # -------------------------------------------------
-        # Reject leave
-        # -------------------------------------------------
-
-        approved_at = datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
-
-        cursor.execute("""
-            UPDATE leaves
-            SET
-                status = ?,
-                approved_by = ?,
-                approved_at = ?
-            WHERE id = ?
-        """, (
-            "Rejected",
-            approved_by,
-            approved_at,
-            leave_id
-        ))
-
-        connection.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Leave rejected successfully",
-            "leave_id": leave_id,
-            "status": "Rejected",
-            "approved_by": approved_by,
-            "approved_at": approved_at
-        }), 200
-
-    except Exception as error:
-
-        connection.rollback()
+    if user["role"] not in ["admin", "manager"]:
 
         return jsonify({
             "success": False,
-            "message": str(error)
-        }), 500
+            "message": (
+                "Only admin or manager can reject leaves"
+            )
+        }), 403
 
-    finally:
+    if not ObjectId.is_valid(leave_id):
 
-        connection.close()
+        return jsonify({
+            "success": False,
+            "message": "Invalid leave ID"
+        }), 400
+
+    db = get_db()
+
+    leaves_collection = db["leaves"]
+
+    leave = leaves_collection.find_one({
+        "_id": ObjectId(leave_id)
+    })
+
+    if not leave:
+
+        return jsonify({
+            "success": False,
+            "message": "Leave request not found"
+        }), 404
+
+    if leave.get("status") != "Pending":
+
+        return jsonify({
+            "success": False,
+            "message": (
+                "Only pending leave requests "
+                "can be rejected"
+            )
+        }), 409
+
+    leaves_collection.update_one(
+        {
+            "_id": ObjectId(leave_id)
+        },
+        {
+            "$set": {
+                "status": "Rejected",
+                "approved_by": ObjectId(user["id"])
+            }
+        }
+    )
+
+    return jsonify({
+        "success": True,
+        "message": "Leave rejected successfully"
+    }), 200

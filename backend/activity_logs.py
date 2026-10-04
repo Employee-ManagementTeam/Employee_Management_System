@@ -1,11 +1,40 @@
 from flask import Blueprint, request, jsonify
-from database import get_connection
+from database import get_db
+from bson import ObjectId
+from datetime import datetime
 
 
-activity_logs = Blueprint("activity_logs", __name__)
+activity_logs = Blueprint(
+    "activity_logs",
+    __name__
+)
 
 
-@activity_logs.route("/api/activity-logs", methods=["POST"])
+# ============================================================
+# HELPER FUNCTION
+# ============================================================
+
+def activity_log_response(record, user):
+    return {
+        "id": str(record["_id"]),
+        "user_id": str(record["user_id"]),
+        "username": user.get("username"),
+        "email": user.get("email"),
+        "role": user.get("role"),
+        "action": record.get("action"),
+        "description": record.get("description"),
+        "created_at": record.get("created_at")
+    }
+
+
+# ============================================================
+# CREATE ACTIVITY LOG
+# ============================================================
+
+@activity_logs.route(
+    "/api/activity-logs",
+    methods=["POST"]
+)
 def create_activity_log():
 
     data = request.get_json()
@@ -32,18 +61,26 @@ def create_activity_log():
             "message": "Action is required"
         }), 400
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    if not ObjectId.is_valid(user_id):
+        return jsonify({
+            "success": False,
+            "message": "Invalid user ID"
+        }), 400
+
+    db = get_db()
+
+    users_collection = db["users"]
+    activity_collection = db["activity_logs"]
 
     try:
 
-        cursor.execute("""
-            SELECT id
-            FROM users
-            WHERE id = ?
-        """, (user_id,))
+        # ----------------------------------------------------
+        # Check user exists
+        # ----------------------------------------------------
 
-        user = cursor.fetchone()
+        user = users_collection.find_one({
+            "_id": ObjectId(user_id)
+        })
 
         if not user:
             return jsonify({
@@ -51,277 +88,276 @@ def create_activity_log():
                 "message": "User not found"
             }), 404
 
-        cursor.execute("""
-            INSERT INTO activity_logs (
-                user_id,
-                action,
-                description
-            )
-            VALUES (?, ?, ?)
-        """, (
-            user_id,
-            action,
-            description
-        ))
+        # ----------------------------------------------------
+        # Create activity log
+        # ----------------------------------------------------
 
-        connection.commit()
+        activity_record = {
+            "user_id": ObjectId(user_id),
+            "action": action,
+            "description": description,
+            "created_at":
+                datetime.now().strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+        }
 
-        activity_log_id = cursor.lastrowid
+        result = activity_collection.insert_one(
+            activity_record
+        )
 
         return jsonify({
             "success": True,
-            "message": "Activity log created successfully",
-            "activity_log_id": activity_log_id
+            "message":
+                "Activity log created successfully",
+            "activity_log_id":
+                str(result.inserted_id)
         }), 201
 
     except Exception as error:
 
-        connection.rollback()
-
         return jsonify({
             "success": False,
             "message": str(error)
         }), 500
 
-    finally:
 
-        connection.close()
-
-
-@activity_logs.route("/api/activity-logs", methods=["GET"])
-def get_activity_logs():
-
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    try:
-
-        user_id = request.args.get("user_id")
-
-        if user_id:
-
-            cursor.execute("""
-                SELECT
-                    activity_logs.id,
-                    activity_logs.user_id,
-                    users.username,
-                    users.email,
-                    users.role,
-                    activity_logs.action,
-                    activity_logs.description,
-                    activity_logs.created_at
-                FROM activity_logs
-                INNER JOIN users
-                    ON activity_logs.user_id = users.id
-                WHERE activity_logs.user_id = ?
-                ORDER BY activity_logs.id DESC
-            """, (user_id,))
-
-        else:
-
-            cursor.execute("""
-                SELECT
-                    activity_logs.id,
-                    activity_logs.user_id,
-                    users.username,
-                    users.email,
-                    users.role,
-                    activity_logs.action,
-                    activity_logs.description,
-                    activity_logs.created_at
-                FROM activity_logs
-                INNER JOIN users
-                    ON activity_logs.user_id = users.id
-                ORDER BY activity_logs.id DESC
-            """)
-
-        records = cursor.fetchall()
-
-        activity_list = []
-
-        for record in records:
-
-            activity_list.append({
-                "id": record["id"],
-                "user_id": record["user_id"],
-                "username": record["username"],
-                "email": record["email"],
-                "role": record["role"],
-                "action": record["action"],
-                "description": record["description"],
-                "created_at": record["created_at"]
-            })
-
-        return jsonify({
-            "success": True,
-            "activity_logs": activity_list
-        }), 200
-
-    finally:
-
-        connection.close()
-
+# ============================================================
+# GET ALL ACTIVITY LOGS
+# ============================================================
 
 @activity_logs.route(
-    "/api/activity-logs/user/<int:user_id>",
+    "/api/activity-logs",
+    methods=["GET"]
+)
+def get_activity_logs():
+
+    user_id = request.args.get("user_id")
+
+    db = get_db()
+
+    users_collection = db["users"]
+    activity_collection = db["activity_logs"]
+
+    query = {}
+
+    # --------------------------------------------------------
+    # Optional user filter
+    # --------------------------------------------------------
+
+    if user_id:
+
+        if not ObjectId.is_valid(user_id):
+            return jsonify({
+                "success": False,
+                "message": "Invalid user ID"
+            }), 400
+
+        query["user_id"] = ObjectId(user_id)
+
+    records = activity_collection.find(
+        query
+    ).sort(
+        "_id",
+        -1
+    )
+
+    activity_list = []
+
+    for record in records:
+
+        user = users_collection.find_one({
+            "_id": record.get("user_id")
+        })
+
+        if not user:
+            continue
+
+        activity_list.append(
+            activity_log_response(
+                record,
+                user
+            )
+        )
+
+    return jsonify({
+        "success": True,
+        "activity_logs":
+            activity_list
+    }), 200
+
+
+# ============================================================
+# GET USER ACTIVITY LOGS
+# ============================================================
+
+@activity_logs.route(
+    "/api/activity-logs/user/<user_id>",
     methods=["GET"]
 )
 def get_user_activity_logs(user_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    try:
-
-        cursor.execute("""
-            SELECT
-                activity_logs.id,
-                activity_logs.user_id,
-                users.username,
-                users.email,
-                users.role,
-                activity_logs.action,
-                activity_logs.description,
-                activity_logs.created_at
-            FROM activity_logs
-            INNER JOIN users
-                ON activity_logs.user_id = users.id
-            WHERE activity_logs.user_id = ?
-            ORDER BY activity_logs.id DESC
-        """, (user_id,))
-
-        records = cursor.fetchall()
-
-        activity_list = []
-
-        for record in records:
-
-            activity_list.append({
-                "id": record["id"],
-                "user_id": record["user_id"],
-                "username": record["username"],
-                "email": record["email"],
-                "role": record["role"],
-                "action": record["action"],
-                "description": record["description"],
-                "created_at": record["created_at"]
-            })
-
+    if not ObjectId.is_valid(user_id):
         return jsonify({
-            "success": True,
-            "user_id": user_id,
-            "activity_logs": activity_list
-        }), 200
+            "success": False,
+            "message": "Invalid user ID"
+        }), 400
 
-    finally:
+    db = get_db()
 
-        connection.close()
+    users_collection = db["users"]
+    activity_collection = db["activity_logs"]
 
+    # --------------------------------------------------------
+    # Check user exists
+    # --------------------------------------------------------
+
+    user = users_collection.find_one({
+        "_id": ObjectId(user_id)
+    })
+
+    if not user:
+        return jsonify({
+            "success": False,
+            "message": "User not found"
+        }), 404
+
+    records = activity_collection.find({
+        "user_id": ObjectId(user_id)
+    }).sort(
+        "_id",
+        -1
+    )
+
+    activity_list = []
+
+    for record in records:
+
+        activity_list.append(
+            activity_log_response(
+                record,
+                user
+            )
+        )
+
+    return jsonify({
+        "success": True,
+        "user_id": user_id,
+        "activity_logs":
+            activity_list
+    }), 200
+
+
+# ============================================================
+# GET SINGLE ACTIVITY LOG
+# ============================================================
 
 @activity_logs.route(
-    "/api/activity-logs/<int:activity_log_id>",
+    "/api/activity-logs/<activity_log_id>",
     methods=["GET"]
 )
 def get_activity_log(activity_log_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    try:
-
-        cursor.execute("""
-            SELECT
-                activity_logs.id,
-                activity_logs.user_id,
-                users.username,
-                users.email,
-                users.role,
-                activity_logs.action,
-                activity_logs.description,
-                activity_logs.created_at
-            FROM activity_logs
-            INNER JOIN users
-                ON activity_logs.user_id = users.id
-            WHERE activity_logs.id = ?
-        """, (activity_log_id,))
-
-        record = cursor.fetchone()
-
-        if not record:
-
-            return jsonify({
-                "success": False,
-                "message": "Activity log not found"
-            }), 404
-
-        activity = {
-            "id": record["id"],
-            "user_id": record["user_id"],
-            "username": record["username"],
-            "email": record["email"],
-            "role": record["role"],
-            "action": record["action"],
-            "description": record["description"],
-            "created_at": record["created_at"]
-        }
-
+    if not ObjectId.is_valid(
+        activity_log_id
+    ):
         return jsonify({
-            "success": True,
-            "activity_log": activity
-        }), 200
+            "success": False,
+            "message":
+                "Invalid activity log ID"
+        }), 400
 
-    finally:
+    db = get_db()
 
-        connection.close()
+    users_collection = db["users"]
+    activity_collection = db["activity_logs"]
 
+    record = activity_collection.find_one({
+        "_id": ObjectId(activity_log_id)
+    })
+
+    if not record:
+        return jsonify({
+            "success": False,
+            "message":
+                "Activity log not found"
+        }), 404
+
+    user = users_collection.find_one({
+        "_id": record.get("user_id")
+    })
+
+    if not user:
+        return jsonify({
+            "success": False,
+            "message":
+                "User not found"
+        }), 404
+
+    activity = activity_log_response(
+        record,
+        user
+    )
+
+    return jsonify({
+        "success": True,
+        "activity_log":
+            activity
+    }), 200
+
+
+# ============================================================
+# DELETE ACTIVITY LOG
+# ============================================================
 
 @activity_logs.route(
-    "/api/activity-logs/<int:activity_log_id>",
+    "/api/activity-logs/<activity_log_id>",
     methods=["DELETE"]
 )
 def delete_activity_log(activity_log_id):
 
-    connection = get_connection()
-    cursor = connection.cursor()
+    if not ObjectId.is_valid(
+        activity_log_id
+    ):
+        return jsonify({
+            "success": False,
+            "message":
+                "Invalid activity log ID"
+        }), 400
+
+    db = get_db()
+
+    activity_collection = db[
+        "activity_logs"
+    ]
+
+    record = activity_collection.find_one({
+        "_id": ObjectId(activity_log_id)
+    })
+
+    if not record:
+        return jsonify({
+            "success": False,
+            "message":
+                "Activity log not found"
+        }), 404
 
     try:
 
-        cursor.execute("""
-            SELECT id
-            FROM activity_logs
-            WHERE id = ?
-        """, (activity_log_id,))
-
-        record = cursor.fetchone()
-
-        if not record:
-
-            return jsonify({
-                "success": False,
-                "message": "Activity log not found"
-            }), 404
-
-        cursor.execute("""
-            DELETE FROM activity_logs
-            WHERE id = ?
-        """, (activity_log_id,))
-
-        connection.commit()
+        activity_collection.delete_one({
+            "_id":
+                ObjectId(activity_log_id)
+        })
 
         return jsonify({
             "success": True,
-            "message": "Activity log deleted successfully"
+            "message":
+                "Activity log deleted successfully"
         }), 200
 
     except Exception as error:
-
-        connection.rollback()
 
         return jsonify({
             "success": False,
             "message": str(error)
         }), 500
-
-    finally:
-
-        connection.close()
