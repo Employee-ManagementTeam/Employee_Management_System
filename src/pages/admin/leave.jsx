@@ -1,142 +1,142 @@
 import { useEffect, useState } from "react";
 
-function Payroll() {
-  const [payroll, setPayroll] = useState([]);
+function Leave() {
+  const [leaves, setLeaves] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
 
   const [formData, setFormData] = useState({
     employee: "",
-    month: "",
-    basicSalary: "",
-    allowances: "",
-    deductions: "",
-    status: "Pending",
+    type: "Casual Leave",
+    fromDate: "",
+    toDate: "",
+    reason: "",
   });
 
+  // Load data
   useEffect(() => {
-    const savedPayroll =
-      JSON.parse(localStorage.getItem("emsPayroll")) || [];
+    const savedLeaves =
+      JSON.parse(localStorage.getItem("emsLeaves")) || [];
 
     const savedEmployees =
       JSON.parse(localStorage.getItem("emsEmployees")) || [];
 
-    setPayroll(savedPayroll);
+    setLeaves(savedLeaves);
     setEmployees(savedEmployees);
   }, []);
 
-  const savePayroll = (data) => {
-    setPayroll(data);
-    localStorage.setItem("emsPayroll", JSON.stringify(data));
+  // Save leaves
+  const saveLeaves = (data) => {
+    setLeaves(data);
+
+    localStorage.setItem(
+      "emsLeaves",
+      JSON.stringify(data)
+    );
   };
 
+  // Form changes
   const handleChange = (e) => {
+    const { name, value } = e.target;
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
   };
 
+  // Add leave
   const handleSubmit = (e) => {
     e.preventDefault();
 
     if (
       !formData.employee ||
-      !formData.month ||
-      !formData.basicSalary
+      !formData.fromDate ||
+      !formData.toDate ||
+      !formData.reason
     ) {
-      alert("Please fill all required fields.");
+      alert("Please fill all fields.");
       return;
     }
 
-    const basic = Number(formData.basicSalary) || 0;
-    const allowances = Number(formData.allowances) || 0;
-    const deductions = Number(formData.deductions) || 0;
-
-    const netSalary =
-      basic + allowances - deductions;
-
-    const newPayroll = {
+    const newLeave = {
       id: Date.now(),
       ...formData,
-      basicSalary: basic,
-      allowances,
-      deductions,
-      netSalary,
+      status: "Pending",
     };
 
-    savePayroll([...payroll, newPayroll]);
+    saveLeaves([
+      ...leaves,
+      newLeave,
+    ]);
 
     setFormData({
       employee: "",
-      month: "",
-      basicSalary: "",
-      allowances: "",
-      deductions: "",
-      status: "Pending",
+      type: "Casual Leave",
+      fromDate: "",
+      toDate: "",
+      reason: "",
     });
 
     setShowForm(false);
   };
 
+  // Change status
   const updateStatus = (id, status) => {
-    const updated = payroll.map((record) =>
-      record.id === id
-        ? { ...record, status }
-        : record
+    const updatedLeaves = leaves.map(
+      (leave) =>
+        leave.id === id
+          ? { ...leave, status }
+          : leave
     );
 
-    savePayroll(updated);
+    saveLeaves(updatedLeaves);
   };
 
-  const deletePayroll = (id) => {
-    if (!window.confirm("Delete this payroll record?")) {
-      return;
-    }
-
-    const updated = payroll.filter(
-      (record) => record.id !== id
-    );
-
-    savePayroll(updated);
-  };
-
-  const filteredPayroll = payroll.filter((record) => {
+  // Search
+  const filteredLeaves = leaves.filter((leave) => {
     const text = search.toLowerCase();
 
     return (
-      record.employee.toLowerCase().includes(text) ||
-      record.month.toLowerCase().includes(text)
+      leave.employee
+        .toLowerCase()
+        .includes(text) ||
+      leave.type
+        .toLowerCase()
+        .includes(text) ||
+      leave.status
+        .toLowerCase()
+        .includes(text)
     );
   });
 
-  const totalPayroll = payroll.reduce(
-    (total, record) =>
-      total + Number(record.netSalary || 0),
-    0
-  );
-
-  const paid = payroll.filter(
-    (record) => record.status === "Paid"
+  const pending = leaves.filter(
+    (leave) => leave.status === "Pending"
   ).length;
 
-  const pending = payroll.filter(
-    (record) => record.status === "Pending"
+  const approved = leaves.filter(
+    (leave) => leave.status === "Approved"
   ).length;
 
-  const formatCurrency = (amount) => {
-    return `₹${Number(amount || 0).toLocaleString("en-IN")}`;
-  };
+  const rejected = leaves.filter(
+    (leave) => leave.status === "Rejected"
+  ).length;
 
   return (
     <div style={styles.page}>
+
+      {/* HEADER */}
+
       <div style={styles.header}>
+
         <div>
-          <h1 style={styles.title}>Payroll Management</h1>
+          <h1 style={styles.title}>
+            Leave Management
+          </h1>
 
           <p style={styles.subtitle}>
-            Manage employee salary and payroll records
+            Review and manage employee leave requests
           </p>
         </div>
 
@@ -144,27 +144,20 @@ function Payroll() {
           style={styles.addButton}
           onClick={() => setShowForm(true)}
         >
-          + Add Payroll
+          + Add Leave Request
         </button>
+
       </div>
 
+
+      {/* SUMMARY */}
+
       <div style={styles.summaryGrid}>
-        <SummaryCard
-          title="Payroll Records"
-          value={payroll.length}
-          icon="💰"
-        />
 
         <SummaryCard
-          title="Total Net Salary"
-          value={formatCurrency(totalPayroll)}
-          icon="💵"
-        />
-
-        <SummaryCard
-          title="Paid"
-          value={paid}
-          icon="✅"
+          title="Total Requests"
+          value={leaves.length}
+          icon="📋"
         />
 
         <SummaryCard
@@ -172,16 +165,35 @@ function Payroll() {
           value={pending}
           icon="⏳"
         />
+
+        <SummaryCard
+          title="Approved"
+          value={approved}
+          icon="✅"
+        />
+
+        <SummaryCard
+          title="Rejected"
+          value={rejected}
+          icon="❌"
+        />
+
       </div>
+
+
+      {/* FORM */}
 
       {showForm && (
         <div style={styles.formCard}>
+
           <h2 style={styles.formTitle}>
-            Add Payroll Record
+            New Leave Request
           </h2>
 
           <form onSubmit={handleSubmit}>
+
             <div style={styles.formGrid}>
+
               <select
                 name="employee"
                 value={formData.employee}
@@ -200,64 +212,65 @@ function Payroll() {
                     {employee.name}
                   </option>
                 ))}
+
               </select>
 
-              <input
-                type="text"
-                name="month"
-                placeholder="Month (e.g. October 2026)"
-                value={formData.month}
-                onChange={handleChange}
-                style={styles.input}
-              />
-
-              <input
-                type="number"
-                name="basicSalary"
-                placeholder="Basic Salary"
-                value={formData.basicSalary}
-                onChange={handleChange}
-                style={styles.input}
-                min="0"
-              />
-
-              <input
-                type="number"
-                name="allowances"
-                placeholder="Allowances"
-                value={formData.allowances}
-                onChange={handleChange}
-                style={styles.input}
-                min="0"
-              />
-
-              <input
-                type="number"
-                name="deductions"
-                placeholder="Deductions"
-                value={formData.deductions}
-                onChange={handleChange}
-                style={styles.input}
-                min="0"
-              />
-
               <select
-                name="status"
-                value={formData.status}
+                name="type"
+                value={formData.type}
                 onChange={handleChange}
                 style={styles.input}
               >
-                <option value="Pending">Pending</option>
-                <option value="Paid">Paid</option>
+                <option>
+                  Casual Leave
+                </option>
+
+                <option>
+                  Sick Leave
+                </option>
+
+                <option>
+                  Annual Leave
+                </option>
+
+                <option>
+                  Emergency Leave
+                </option>
               </select>
+
+              <input
+                type="date"
+                name="fromDate"
+                value={formData.fromDate}
+                onChange={handleChange}
+                style={styles.input}
+              />
+
+              <input
+                type="date"
+                name="toDate"
+                value={formData.toDate}
+                onChange={handleChange}
+                style={styles.input}
+              />
+
+              <textarea
+                name="reason"
+                placeholder="Reason for leave"
+                value={formData.reason}
+                onChange={handleChange}
+                style={styles.textarea}
+              />
+
             </div>
 
             <div style={styles.formButtons}>
+
               <button
                 type="submit"
                 style={styles.saveButton}
               >
-                Save Payroll
+                Submit Request
               </button>
 
               <button
@@ -267,126 +280,215 @@ function Payroll() {
               >
                 Cancel
               </button>
+
             </div>
+
           </form>
+
         </div>
       )}
 
+
+      {/* SEARCH */}
+
       <div style={styles.searchContainer}>
+
         <input
           type="text"
-          placeholder="Search payroll records..."
+          placeholder="Search leave requests..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) =>
+            setSearch(e.target.value)
+          }
           style={styles.search}
         />
 
         <span style={styles.count}>
-          {filteredPayroll.length} Records
+          {filteredLeaves.length} Requests
         </span>
+
       </div>
 
-      <div style={styles.tableCard}>
-        {filteredPayroll.length === 0 ? (
-          <div style={styles.empty}>
-            <div style={styles.emptyIcon}>💰</div>
 
-            <h3>No payroll records found</h3>
+      {/* TABLE */}
+
+      <div style={styles.tableCard}>
+
+        {filteredLeaves.length === 0 ? (
+
+          <div style={styles.empty}>
+
+            <div style={styles.emptyIcon}>
+              📅
+            </div>
+
+            <h3>
+              No leave requests
+            </h3>
 
             <p>
-              Add a payroll record to see it here.
+              Add a leave request to see it here.
             </p>
+
           </div>
+
         ) : (
+
           <div style={styles.tableWrapper}>
+
             <table style={styles.table}>
+
               <thead>
+
                 <tr>
-                  <th style={styles.th}>Employee</th>
-                  <th style={styles.th}>Month</th>
-                  <th style={styles.th}>Basic</th>
-                  <th style={styles.th}>Allowances</th>
-                  <th style={styles.th}>Deductions</th>
-                  <th style={styles.th}>Net Salary</th>
-                  <th style={styles.th}>Status</th>
-                  <th style={styles.th}>Action</th>
+
+                  <th style={styles.th}>
+                    Employee
+                  </th>
+
+                  <th style={styles.th}>
+                    Leave Type
+                  </th>
+
+                  <th style={styles.th}>
+                    From
+                  </th>
+
+                  <th style={styles.th}>
+                    To
+                  </th>
+
+                  <th style={styles.th}>
+                    Reason
+                  </th>
+
+                  <th style={styles.th}>
+                    Status
+                  </th>
+
+                  <th style={styles.th}>
+                    Action
+                  </th>
+
                 </tr>
+
               </thead>
 
               <tbody>
-                {filteredPayroll.map((record) => (
-                  <tr key={record.id}>
+
+                {filteredLeaves.map((leave) => (
+
+                  <tr key={leave.id}>
+
                     <td style={styles.td}>
-                      <strong>{record.employee}</strong>
+                      <strong>
+                        {leave.employee}
+                      </strong>
                     </td>
 
                     <td style={styles.td}>
-                      {record.month}
+                      {leave.type}
                     </td>
 
                     <td style={styles.td}>
-                      {formatCurrency(record.basicSalary)}
+                      {leave.fromDate}
                     </td>
 
                     <td style={styles.td}>
-                      {formatCurrency(record.allowances)}
+                      {leave.toDate}
                     </td>
 
                     <td style={styles.td}>
-                      {formatCurrency(record.deductions)}
-                    </td>
-
-                    <td style={styles.netSalary}>
-                      {formatCurrency(record.netSalary)}
+                      {leave.reason}
                     </td>
 
                     <td style={styles.td}>
-                      <select
-                        value={record.status}
-                        onChange={(e) =>
-                          updateStatus(
-                            record.id,
-                            e.target.value
-                          )
-                        }
-                        style={styles.statusSelect}
+
+                      <span
+                        style={{
+                          ...styles.status,
+                          background:
+                            leave.status === "Approved"
+                              ? "#dcfce7"
+                              : leave.status === "Rejected"
+                              ? "#fee2e2"
+                              : "#fef3c7",
+                          color:
+                            leave.status === "Approved"
+                              ? "#166534"
+                              : leave.status === "Rejected"
+                              ? "#991b1b"
+                              : "#92400e",
+                        }}
                       >
-                        <option value="Pending">
-                          Pending
-                        </option>
+                        {leave.status}
+                      </span>
 
-                        <option value="Paid">
-                          Paid
-                        </option>
-                      </select>
                     </td>
 
                     <td style={styles.td}>
-                      <button
-                        style={styles.deleteButton}
-                        onClick={() =>
-                          deletePayroll(record.id)
-                        }
-                      >
-                        Delete
-                      </button>
+
+                      {leave.status === "Pending" && (
+                        <>
+                          <button
+                            style={styles.approveButton}
+                            onClick={() =>
+                              updateStatus(
+                                leave.id,
+                                "Approved"
+                              )
+                            }
+                          >
+                            Approve
+                          </button>
+
+                          <button
+                            style={styles.rejectButton}
+                            onClick={() =>
+                              updateStatus(
+                                leave.id,
+                                "Rejected"
+                              )
+                            }
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+
                     </td>
+
                   </tr>
+
                 ))}
+
               </tbody>
+
             </table>
+
           </div>
+
         )}
+
       </div>
+
     </div>
   );
 }
 
-function SummaryCard({ title, value, icon }) {
+
+function SummaryCard({
+  title,
+  value,
+  icon,
+}) {
   return (
     <div style={styles.summaryCard}>
+
       <div>
-        <p style={styles.summaryTitle}>{title}</p>
+        <p style={styles.summaryTitle}>
+          {title}
+        </p>
 
         <h2 style={styles.summaryValue}>
           {value}
@@ -396,11 +498,14 @@ function SummaryCard({ title, value, icon }) {
       <div style={styles.summaryIcon}>
         {icon}
       </div>
+
     </div>
   );
 }
 
+
 const styles = {
+
   page: {
     padding: "30px",
     background: "#f5f7fb",
@@ -438,7 +543,8 @@ const styles = {
 
   summaryGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
+    gridTemplateColumns:
+      "repeat(4, 1fr)",
     gap: "18px",
     marginBottom: "25px",
   },
@@ -461,7 +567,7 @@ const styles = {
 
   summaryValue: {
     margin: "7px 0 0",
-    fontSize: "24px",
+    fontSize: "26px",
     color: "#111827",
   },
 
@@ -491,7 +597,8 @@ const styles = {
 
   formGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
+    gridTemplateColumns:
+      "repeat(2, 1fr)",
     gap: "15px",
   },
 
@@ -502,6 +609,17 @@ const styles = {
     border: "1px solid #d1d5db",
     borderRadius: "7px",
     fontSize: "14px",
+  },
+
+  textarea: {
+    gridColumn: "1 / -1",
+    minHeight: "90px",
+    padding: "12px",
+    border: "1px solid #d1d5db",
+    borderRadius: "7px",
+    fontSize: "14px",
+    resize: "vertical",
+    fontFamily: "Arial",
   },
 
   formButtons: {
@@ -575,7 +693,6 @@ const styles = {
     color: "#374151",
     fontSize: "13px",
     borderBottom: "1px solid #e5e7eb",
-    whiteSpace: "nowrap",
   },
 
   td: {
@@ -583,30 +700,30 @@ const styles = {
     borderBottom: "1px solid #f1f5f9",
     color: "#4b5563",
     fontSize: "13px",
-    whiteSpace: "nowrap",
   },
 
-  netSalary: {
-    padding: "15px",
-    borderBottom: "1px solid #f1f5f9",
-    color: "#111827",
-    fontSize: "13px",
+  status: {
+    padding: "5px 9px",
+    borderRadius: "20px",
+    fontSize: "11px",
     fontWeight: "bold",
-    whiteSpace: "nowrap",
   },
 
-  statusSelect: {
-    padding: "7px",
-    border: "1px solid #d1d5db",
+  approveButton: {
+    background: "#dcfce7",
+    color: "#166534",
+    border: "none",
+    padding: "7px 9px",
     borderRadius: "5px",
     cursor: "pointer",
+    marginRight: "5px",
   },
 
-  deleteButton: {
+  rejectButton: {
     background: "#fee2e2",
     color: "#991b1b",
     border: "none",
-    padding: "7px 10px",
+    padding: "7px 9px",
     borderRadius: "5px",
     cursor: "pointer",
   },
@@ -622,4 +739,4 @@ const styles = {
   },
 };
 
-export default Payroll;
+export default Leave;

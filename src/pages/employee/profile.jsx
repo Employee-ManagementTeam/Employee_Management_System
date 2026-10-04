@@ -1,57 +1,71 @@
 import { useEffect, useState } from "react";
 
 function Profile() {
-  const [user, setUser] = useState(null);
+  const [employee, setEmployee] = useState(null);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-
-    if (savedUser) {
-      const data = JSON.parse(savedUser);
-      setUser(data.user);
-    }
+    loadProfile();
   }, []);
 
-  if (!user) {
-    return (
-      <div className="p-6">
-        <p className="text-gray-500">No user information available.</p>
-      </div>
+  const loadProfile = () => {
+    const email = localStorage.getItem("email");
+
+    const employees =
+      JSON.parse(localStorage.getItem("emsEmployees")) || [];
+
+    const current = employees.find(
+      (item) => item.email === email
     );
-  }
+
+    setEmployee(current || null);
+  };
+
+  const name =
+    employee?.name ||
+    localStorage.getItem("username") ||
+    "Employee";
+
+  const email =
+    employee?.email ||
+    localStorage.getItem("email") ||
+    "Not Available";
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div style={styles.page}>
 
-      <div className="max-w-3xl mx-auto">
+      <h1>My Profile</h1>
 
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">
-          My Profile
-        </h1>
+      <p style={styles.subtitle}>
+        View your employee information
+      </p>
 
-        <div className="bg-white rounded-2xl shadow-sm p-6">
+      <div style={styles.card}>
 
-          <div className="mb-5">
-            <p className="text-sm text-gray-500">Username</p>
-            <p className="text-lg font-semibold text-gray-800">
-              {user.username}
-            </p>
-          </div>
+        <div style={styles.avatar}>
+          {name.charAt(0).toUpperCase()}
+        </div>
 
-          <div className="mb-5">
-            <p className="text-sm text-gray-500">Email</p>
-            <p className="text-lg font-semibold text-gray-800">
-              {user.email}
-            </p>
-          </div>
+        <h2>{name}</h2>
 
-          <div>
-            <p className="text-sm text-gray-500">Role</p>
-            <p className="text-lg font-semibold text-gray-800 capitalize">
-              {user.role}
-            </p>
-          </div>
+        <div style={styles.info}>
+          <p>
+            <strong>Email:</strong> {email}
+          </p>
 
+          <p>
+            <strong>Department:</strong>{" "}
+            {employee?.department || "Not Available"}
+          </p>
+
+          <p>
+            <strong>Designation:</strong>{" "}
+            {employee?.designation || "Not Available"}
+          </p>
+
+          <p>
+            <strong>Attendance:</strong>{" "}
+            {employee?.attendance || "Not Marked"}
+          </p>
         </div>
 
       </div>
@@ -59,5 +73,45 @@ function Profile() {
     </div>
   );
 }
+
+const styles = {
+  page: {
+    padding: "30px",
+    minHeight: "100vh",
+    background: "#f5f7fb",
+    fontFamily: "Arial, sans-serif",
+  },
+
+  subtitle: {
+    color: "#6b7280",
+  },
+
+  card: {
+    background: "white",
+    maxWidth: "600px",
+    padding: "30px",
+    marginTop: "25px",
+    borderRadius: "10px",
+    border: "1px solid #e5e7eb",
+  },
+
+  avatar: {
+    width: "70px",
+    height: "70px",
+    borderRadius: "50%",
+    background: "#2563eb",
+    color: "white",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "28px",
+    fontWeight: "bold",
+  },
+
+  info: {
+    marginTop: "25px",
+    lineHeight: "1.8",
+  },
+};
 
 export default Profile;

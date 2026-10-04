@@ -1,87 +1,120 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function Documents() {
   const [documents, setDocuments] = useState([]);
 
+  useEffect(() => {
+    loadDocuments();
+  }, []);
+
+  const loadDocuments = () => {
+    const employeeName =
+      localStorage.getItem("username") || "";
+
+    const saved =
+      JSON.parse(localStorage.getItem("emsDocuments")) || [];
+
+    const employees =
+      JSON.parse(localStorage.getItem("emsEmployees")) || [];
+
+    const email = localStorage.getItem("email");
+
+    const employee = employees.find(
+      (item) => item.email === email
+    );
+
+    const name = employee?.name || employeeName;
+
+    setDocuments(
+      saved.filter(
+        (document) => document.employee === name
+      )
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-6xl mx-auto">
+    <div style={styles.page}>
 
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">
-          My Documents
-        </h1>
+      <h1>My Documents</h1>
 
-        {/* Upload Section */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+      <p style={styles.subtitle}>
+        View your submitted documents
+      </p>
 
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Upload Document
-          </h2>
+      <div style={styles.grid}>
 
-          <div className="flex flex-col md:flex-row gap-4">
+        {documents.map((document) => (
+          <div
+            key={document.id}
+            style={styles.card}
+          >
 
-            <input
-              type="file"
-              className="border border-gray-300 rounded-lg px-4 py-3"
-            />
+            <div style={styles.icon}>📄</div>
 
-            <button
-              type="button"
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700"
-              onClick={() => {
-                console.log("Document upload will be connected to backend");
-              }}
-            >
-              Upload
-            </button>
+            <h2>{document.documentName}</h2>
+
+            <p>
+              <strong>Type:</strong>{" "}
+              {document.documentType}
+            </p>
+
+            <p>
+              <strong>Status:</strong>{" "}
+              {document.status}
+            </p>
 
           </div>
-
-        </div>
-
-        {/* Documents List */}
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            My Documents
-          </h2>
-
-          {documents.length === 0 ? (
-            <p className="text-gray-500">
-              Documents will appear here after they are uploaded.
-            </p>
-          ) : (
-            <div className="space-y-4">
-
-              {documents.map((document) => (
-                <div
-                  key={document.id}
-                  className="border rounded-xl p-4 flex justify-between items-center"
-                >
-                  <div>
-                    <h3 className="font-semibold text-gray-800">
-                      {document.name}
-                    </h3>
-
-                    <p className="text-sm text-gray-500">
-                      {document.type}
-                    </p>
-                  </div>
-
-                  <button className="text-blue-600 font-semibold">
-                    View
-                  </button>
-                </div>
-              ))}
-
-            </div>
-          )}
-
-        </div>
+        ))}
 
       </div>
+
+      {documents.length === 0 && (
+        <div style={styles.empty}>
+          No documents available.
+        </div>
+      )}
+
     </div>
   );
 }
+
+const styles = {
+  page: {
+    padding: "30px",
+    minHeight: "100vh",
+    background: "#f5f7fb",
+    fontFamily: "Arial, sans-serif",
+  },
+
+  subtitle: {
+    color: "#6b7280",
+  },
+
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "18px",
+    marginTop: "25px",
+  },
+
+  card: {
+    background: "white",
+    padding: "20px",
+    borderRadius: "10px",
+    border: "1px solid #e5e7eb",
+  },
+
+  icon: {
+    fontSize: "35px",
+  },
+
+  empty: {
+    marginTop: "25px",
+    background: "white",
+    padding: "25px",
+    borderRadius: "10px",
+    color: "#6b7280",
+  },
+};
 
 export default Documents;

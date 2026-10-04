@@ -1,94 +1,211 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function Tasks() {
   const [tasks, setTasks] = useState([]);
 
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  const getEmployeeName = () => {
+    const email = localStorage.getItem("email");
+
+    const employees =
+      JSON.parse(localStorage.getItem("emsEmployees")) || [];
+
+    const employee = employees.find(
+      (item) => item.email === email
+    );
+
+    return (
+      employee?.name ||
+      localStorage.getItem("username") ||
+      "Employee"
+    );
+  };
+
+  const loadTasks = () => {
+    const saved =
+      JSON.parse(localStorage.getItem("emsTasks")) || [];
+
+    setTasks(
+      saved.filter(
+        (task) => task.employee === getEmployeeName()
+      )
+    );
+  };
+
+  const updateStatus = (id, status) => {
+    const allTasks =
+      JSON.parse(localStorage.getItem("emsTasks")) || [];
+
+    const updated = allTasks.map((task) =>
+      task.id === id
+        ? { ...task, status }
+        : task
+    );
+
+    localStorage.setItem(
+      "emsTasks",
+      JSON.stringify(updated)
+    );
+
+    loadTasks();
+  };
+
+  const pending = tasks.filter(
+    (task) => task.status === "Pending"
+  ).length;
+
+  const progress = tasks.filter(
+    (task) => task.status === "In Progress"
+  ).length;
+
+  const completed = tasks.filter(
+    (task) => task.status === "Completed"
+  ).length;
+
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div style={styles.page}>
 
-      <div className="max-w-6xl mx-auto">
+      <h1>My Tasks</h1>
 
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">
-          My Tasks
-        </h1>
+      <p style={styles.subtitle}>
+        View and update your assigned tasks
+      </p>
 
-        {/* Task Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+      <div style={styles.cards}>
 
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <p className="text-sm text-gray-500">
-              Total Tasks
-            </p>
-
-            <h2 className="text-3xl font-bold mt-2">
-              {tasks.length}
-            </h2>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <p className="text-sm text-gray-500">
-              Completed
-            </p>
-
-            <h2 className="text-3xl font-bold mt-2">
-              {tasks.filter((task) => task.status === "completed").length}
-            </h2>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <p className="text-sm text-gray-500">
-              Pending
-            </p>
-
-            <h2 className="text-3xl font-bold mt-2">
-              {tasks.filter((task) => task.status === "pending").length}
-            </h2>
-          </div>
-
-        </div>
-
-        {/* Tasks */}
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Assigned Tasks
-          </h2>
-
-          {tasks.length === 0 ? (
-            <p className="text-gray-500">
-              Tasks will appear here when they are assigned to you.
-            </p>
-          ) : (
-            <div className="space-y-4">
-
-              {tasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="border rounded-xl p-4"
-                >
-                  <h3 className="font-semibold text-gray-800">
-                    {task.title}
-                  </h3>
-
-                  <p className="text-gray-500 text-sm mt-1">
-                    {task.description}
-                  </p>
-
-                  <p className="text-sm mt-2">
-                    Status: {task.status}
-                  </p>
-                </div>
-              ))}
-
-            </div>
-          )}
-
-        </div>
+        <Stat title="Total" value={tasks.length} />
+        <Stat title="Pending" value={pending} />
+        <Stat title="In Progress" value={progress} />
+        <Stat title="Completed" value={completed} />
 
       </div>
+
+      <div style={styles.grid}>
+
+        {tasks.map((task) => (
+
+          <div
+            key={task.id}
+            style={styles.card}
+          >
+
+            <h2>{task.title}</h2>
+
+            <p>
+              <strong>Description:</strong>{" "}
+              {task.description}
+            </p>
+
+            <p>
+              <strong>Priority:</strong>{" "}
+              {task.priority}
+            </p>
+
+            <p>
+              <strong>Due Date:</strong>{" "}
+              {task.dueDate}
+            </p>
+
+            <label>
+              <strong>Status</strong>
+            </label>
+
+            <select
+              value={task.status}
+              onChange={(e) =>
+                updateStatus(
+                  task.id,
+                  e.target.value
+                )
+              }
+              style={styles.select}
+            >
+              <option>Pending</option>
+              <option>In Progress</option>
+              <option>Completed</option>
+            </select>
+
+          </div>
+
+        ))}
+
+      </div>
+
+      {tasks.length === 0 && (
+        <div style={styles.empty}>
+          No tasks assigned to you.
+        </div>
+      )}
 
     </div>
   );
 }
+
+function Stat({ title, value }) {
+  return (
+    <div style={styles.stat}>
+      <p>{title}</p>
+      <h2>{value}</h2>
+    </div>
+  );
+}
+
+const styles = {
+  page: {
+    padding: "30px",
+    minHeight: "100vh",
+    background: "#f5f7fb",
+    fontFamily: "Arial, sans-serif",
+  },
+
+  subtitle: {
+    color: "#6b7280",
+  },
+
+  cards: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: "15px",
+    margin: "25px 0",
+  },
+
+  stat: {
+    background: "white",
+    padding: "18px",
+    borderRadius: "10px",
+    border: "1px solid #e5e7eb",
+  },
+
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "18px",
+  },
+
+  card: {
+    background: "white",
+    padding: "20px",
+    borderRadius: "10px",
+    border: "1px solid #e5e7eb",
+  },
+
+  select: {
+    width: "100%",
+    padding: "10px",
+    marginTop: "8px",
+    border: "1px solid #d1d5db",
+    borderRadius: "6px",
+  },
+
+  empty: {
+    background: "white",
+    padding: "25px",
+    borderRadius: "10px",
+    color: "#6b7280",
+  },
+};
 
 export default Tasks;

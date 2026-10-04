@@ -1,37 +1,32 @@
-import { API_BASE_URL } from "./config";
+import { apiRequest } from "./api";
 
-export const loginUser = async (email, password) => {
-  const response = await fetch(`${API_BASE_URL}/api/login`, {
+export async function loginUser(email, password) {
+  const data = await apiRequest("/api/login", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify({
       email,
       password,
     }),
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "Login failed");
+  if (data.success && data.user) {
+    localStorage.setItem("userId", data.user.id);
+    localStorage.setItem("username", data.user.username);
+    localStorage.setItem("email", data.user.email);
+    localStorage.setItem("role", data.user.role);
   }
 
   return data;
-};
+}
 
-export const registerUser = async (
+export async function registerUser(
   username,
   email,
   password,
   role
-) => {
-  const response = await fetch(`${API_BASE_URL}/api/register`, {
+) {
+  return await apiRequest("/api/register", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
     body: JSON.stringify({
       username,
       email,
@@ -39,12 +34,20 @@ export const registerUser = async (
       role,
     }),
   });
+}
 
-  const data = await response.json();
+export function logoutUser() {
+  localStorage.removeItem("userId");
+  localStorage.removeItem("username");
+  localStorage.removeItem("email");
+  localStorage.removeItem("role");
+}
 
-  if (!response.ok) {
-    throw new Error(data.message || "Registration failed");
-  }
-
-  return data;
-};
+export function getCurrentUser() {
+  return {
+    id: localStorage.getItem("userId"),
+    username: localStorage.getItem("username"),
+    email: localStorage.getItem("email"),
+    role: localStorage.getItem("role"),
+  };
+}

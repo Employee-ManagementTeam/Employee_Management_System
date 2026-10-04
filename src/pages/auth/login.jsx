@@ -1,137 +1,137 @@
 import { useState } from "react";
-import { useNavigate,Link } from "react-router-dom";
-import { loginUser } from "../../api/auth";
+import { Link, useNavigate } from "react-router-dom";
 
 function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleLogin = (e) => {
     e.preventDefault();
 
     setError("");
-    setLoading(true);
 
-    try {
-      const data = await loginUser(email, password);
+    const users = JSON.parse(localStorage.getItem("emsUsers")) || [];
 
-      console.log("Login successful:", data);
+    const user = users.find(
+      (item) =>
+        item.email === email &&
+        item.password === password
+    );
 
-localStorage.setItem("user", JSON.stringify(data));
+    if (!user) {
+      setError("Invalid email or password.");
+      return;
+    }
 
-const role = data.user.role;
+    localStorage.setItem("userId", user.id);
+    localStorage.setItem("username", user.username);
+    localStorage.setItem("email", user.email);
+    localStorage.setItem("role", user.role);
 
-if (role === "employee") {
-  navigate("/employee/dashboard");
-} else if (role === "manager") {
-  navigate("/manager/dashboard");
-} else if (role === "admin") {
-  navigate("/admin/dashboard");
-} else {
-  setError("Unknown user role");
-}
-
-    } catch (error) {
-      console.error("Login error:", error);
-      setError(error.message);
-    } finally {
-      setLoading(false);
+    if (user.role === "Admin") {
+      navigate("/admin/dashboard");
+    } else if (user.role === "Manager") {
+      navigate("/manager/dashboard");
+    } else {
+      navigate("/employee/dashboard");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS3pU3b2LJEhfMTtSp4Dg7NFuqMxgM3jTPPSqYMPejZ9w&s=10"/>
+    <div style={styles.container}>
+      <form onSubmit={handleLogin} style={styles.form}>
+        <h1>EMS Login</h1>
 
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 bg- black">
+        <p style={styles.subtitle}>
+          Login to your Employee Management System
+        </p>
 
-        {/* Heading */}
-        <div className="text-center mb-8">
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={styles.input}
+        />
 
-          <h1 className="text-3xl font-bold text-blue-600">
-            Employee Management System
-          </h1>
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={styles.input}
+        />
 
-          <p className="text-gray-500 mt-2">
-            Login to your account
-          </p>
+        {error && <p style={styles.error}>{error}</p>}
 
-        </div>
+        <button type="submit" style={styles.button}>
+          Login
+        </button>
 
-        <form onSubmit={handleLogin}>
-
-          {/* Email */}
-          <div className="mb-5">
-
-            <label className="block text-gray-700 font-medium mb-2">
-              Email
-            </label>
-
-            <input
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 outline-none focus:border-blue-500"
-              required
-            />
-
-          </div>
-
-          {/* Password */}
-          <div className="mb-5">
-
-            <label className="block text-gray-700 font-medium mb-2">
-              Password
-            </label>
-
-            <input
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 outline-none focus:border-blue-500"
-              required
-            />
-
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div className="mb-5 bg-red-100 text-red-700 px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          )}
-
-          {/* Login Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 disabled:bg-blue-300"
-          >
-            {loading ? "Logging in..." : "Login"}
-          </button>
-
-        </form>
-        <p className="text-center text-gray-500 mt-6">
-  Don't have an account?{" "}
-  <Link
-    to="/register"
-    className="text-blue-600 font-semibold hover:underline"
-  >
-    Register
-  </Link>
-</p>
-
-      </div>
-
+        <p style={styles.registerText}>
+          Don't have an account?{" "}
+          <Link to="/register">Register</Link>
+        </p>
+      </form>
     </div>
   );
 }
+
+const styles = {
+  container: {
+    minHeight: "100vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    background: "#f3f4f6",
+    padding: "20px",
+  },
+
+  form: {
+    width: "100%",
+    maxWidth: "420px",
+    background: "white",
+    padding: "35px",
+    borderRadius: "12px",
+    boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
+  },
+
+  subtitle: {
+    color: "#6b7280",
+    marginBottom: "25px",
+  },
+
+  input: {
+    width: "100%",
+    padding: "12px",
+    marginBottom: "15px",
+    border: "1px solid #d1d5db",
+    borderRadius: "7px",
+    boxSizing: "border-box",
+  },
+
+  button: {
+    width: "100%",
+    padding: "12px",
+    background: "#2563eb",
+    color: "white",
+    border: "none",
+    borderRadius: "7px",
+    cursor: "pointer",
+    fontSize: "16px",
+  },
+
+  error: {
+    color: "#dc2626",
+    marginBottom: "15px",
+  },
+
+  registerText: {
+    marginTop: "20px",
+  },
+};
 
 export default Login;
