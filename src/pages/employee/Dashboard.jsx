@@ -1,519 +1,306 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import EmployeeSidebar from "../../components/EmployeeSidebar";
+import Navbar from "../../components/navbar";
+
+import {
+  getEmployees,
+  getEmployeeAttendance,
+  getEmployeeLeaves,
+  getTasks,
+  getPerformance,
+  getNotifications,
+} from "../../api/api";
 
 function Dashboard() {
-  const navigate = useNavigate();
-
   const [employee, setEmployee] = useState(null);
-  const [tasks, setTasks] = useState([]);
+  const [attendance, setAttendance] = useState([]);
   const [leaves, setLeaves] = useState([]);
-  const [documents, setDocuments] = useState([]);
-  const [payroll, setPayroll] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [performance, setPerformance] = useState([]);
+  const [notifications, setNotifications] = useState([]);
 
-  const [activeMenu, setActiveMenu] = useState("Dashboard");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const userId = localStorage.getItem("userId");
 
   useEffect(() => {
-    loadData();
+    loadDashboard();
   }, []);
 
-  const loadData = () => {
-    const userId = localStorage.getItem("userId");
-    const userEmail = localStorage.getItem("email");
+  const loadDashboard = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-    const employees =
-      JSON.parse(localStorage.getItem("emsEmployees")) || [];
+      const employeesResponse = await getEmployees();
 
-    const currentEmployee = employees.find(
-      (item) =>
-        String(item.id) === String(userId) ||
-        item.email === userEmail
-    );
+      const employeeList =
+        Array.isArray(employeesResponse)
+          ? employeesResponse
+          : employeesResponse.employees || employeesResponse.data || [];
 
-    setEmployee(currentEmployee || null);
+      const currentEmployee = employeeList.find(
+        (item) =>
+          String(item.user_id) === String(userId) ||
+          String(item.userId) === String(userId)
+      );
 
-    setTasks(JSON.parse(localStorage.getItem("emsTasks")) || []);
-    setLeaves(JSON.parse(localStorage.getItem("emsLeaves")) || []);
-    setDocuments(JSON.parse(localStorage.getItem("emsDocuments")) || []);
-    setPayroll(JSON.parse(localStorage.getItem("emsPayroll")) || []);
-    setPerformance(
-      JSON.parse(localStorage.getItem("emsPerformance")) || []
-    );
-  };
+      if (!currentEmployee) {
+        throw new Error(
+          "Employee profile was not found for the logged-in user."
+        );
+      }
 
-  const employeeName =
-    employee?.name ||
-    localStorage.getItem("username") ||
-    "Employee";
+      setEmployee(currentEmployee);
 
-  const myTasks = tasks.filter(
-    (task) => task.employee === employeeName
-  );
+      const employeeId =
+        currentEmployee.id ||
+        currentEmployee.employee_id ||
+        currentEmployee._id;
 
-  const myLeaves = leaves.filter(
-    (leave) => leave.employee === employeeName
-  );
+      const [
+        attendanceResponse,
+        leavesResponse,
+        tasksResponse,
+        performanceResponse,
+        notificationsResponse,
+      ] = await Promise.all([
+        getEmployeeAttendance(employeeId),
+        getEmployeeLeaves(employeeId),
+        getTasks(),
+        getPerformance(),
+        getNotifications(),
+      ]);
 
-  const myDocuments = documents.filter(
-    (document) => document.employee === employeeName
-  );
+      setAttendance(
+        Array.isArray(attendanceResponse)
+          ? attendanceResponse
+          : attendanceResponse.attendance ||
+              attendanceResponse.data ||
+              []
+      );
 
-  const myPayroll = payroll.filter(
-    (salary) => salary.employee === employeeName
-  );
+      setLeaves(
+        Array.isArray(leavesResponse)
+          ? leavesResponse
+          : leavesResponse.leaves || leavesResponse.data || []
+      );
 
-  const myPerformance = performance.filter(
-    (item) => item.employee === employeeName
-  );
+      setTasks(
+        Array.isArray(tasksResponse)
+          ? tasksResponse
+          : tasksResponse.tasks || tasksResponse.data || []
+      );
 
-  const pendingTasks = myTasks.filter(
-    (task) => task.status !== "Completed"
-  ).length;
+      setPerformance(
+        Array.isArray(performanceResponse)
+          ? performanceResponse
+          : performanceResponse.performance ||
+              performanceResponse.data ||
+              []
+      );
 
-  const completedTasks = myTasks.filter(
-    (task) => task.status === "Completed"
-  ).length;
-
-  const pendingLeaves = myLeaves.filter(
-    (leave) => leave.status === "Pending"
-  ).length;
-
-  const handleMenuClick = (menu) => {
-    setActiveMenu(menu);
-
-    const routes = {
-      Dashboard: "/employee/dashboard",
-      Attendance: "/employee/attendance",
-      Documents: "/employee/documents",
-      Leave: "/employee/leave",
-      Notifications: "/employee/notifications",
-      Payroll: "/employee/payroll",
-      Performance: "/employee/performance",
-      Profile: "/employee/profile",
-      Tasks: "/employee/tasks",
-    };
-
-    if (routes[menu]) {
-      navigate(routes[menu]);
+      setNotifications(
+        Array.isArray(notificationsResponse)
+          ? notificationsResponse
+          : notificationsResponse.notifications ||
+              notificationsResponse.data ||
+              []
+      );
+    } catch (err) {
+      setError(err.message || "Failed to load dashboard.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("userId");
-    localStorage.removeItem("username");
-    localStorage.removeItem("email");
-    localStorage.removeItem("role");
+  const employeeId =
+    employee?.id ||
+    employee?.employee_id ||
+    employee?._id;
 
-    navigate("/login");
-  };
+  const employeeTasks = tasks.filter(
+    (task) =>
+      String(task.employee_id) === String(employeeId) ||
+      String(task.assigned_to) === String(employeeId) ||
+      String(task.user_id) === String(userId)
+  );
 
-  const menuItems = [
-    "Dashboard",
-    "Attendance",
-    "Tasks",
-    "Leave",
-    "Performance",
-    "Documents",
-    "Payroll",
-    "Notifications",
-    "Profile",
-  ];
+  const employeePerformance = performance.filter(
+    (item) =>
+      String(item.employee_id) === String(employeeId) ||
+      String(item.user_id) === String(userId)
+  );
+
+  const pendingLeaves = leaves.filter(
+    (leave) =>
+      String(leave.status || "").toLowerCase() === "pending"
+  );
+
+  const unreadNotifications = notifications.filter(
+    (notification) =>
+      !notification.is_read &&
+      !notification.read
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <EmployeeSidebar />
+        <Navbar />
+
+        <main className="ml-64 pt-20 p-6">
+          <p className="text-gray-500">Loading dashboard...</p>
+        </main>
+      </div>
+    );
+  }
 
   return (
-    <div style={styles.container}>
+    <div className="min-h-screen bg-gray-100">
+      <EmployeeSidebar />
+      <Navbar />
 
-      <aside style={styles.sidebar}>
+      <main className="ml-64 pt-20">
+        <div className="p-6">
 
-        <div style={styles.logo}>EMS</div>
-
-        <div style={styles.logoText}>
-          Employee Panel
-        </div>
-
-        <nav style={styles.nav}>
-          {menuItems.map((menu) => (
-            <div
-              key={menu}
-              onClick={() => handleMenuClick(menu)}
-              style={{
-                ...styles.menuItem,
-                ...(activeMenu === menu
-                  ? styles.activeMenu
-                  : {}),
-              }}
-            >
-              <span>{getIcon(menu)}</span>
-              <span>{menu}</span>
-            </div>
-          ))}
-        </nav>
-
-        <button
-          onClick={logout}
-          style={styles.logout}
-        >
-          🚪 Logout
-        </button>
-
-      </aside>
-
-      <main style={styles.main}>
-
-        <header style={styles.navbar}>
-
-          <div>
-            <h2 style={styles.pageTitle}>
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-800">
               Employee Dashboard
-            </h2>
+            </h1>
 
-            <p style={styles.welcome}>
-              Welcome back, {employeeName}
+            <p className="mt-1 text-gray-500">
+              Welcome,{" "}
+              {employee?.first_name || employee?.username || "Employee"}
             </p>
           </div>
 
-          <div style={styles.profile}>
-            <div style={styles.avatar}>
-              {employeeName.charAt(0).toUpperCase()}
+          {error && (
+            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+              {error}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <p className="text-sm text-gray-500">
+                Attendance Records
+              </p>
+
+              <h2 className="mt-2 text-3xl font-bold text-orange-600">
+                {attendance.length}
+              </h2>
             </div>
 
-            <div>
-              <strong>{employeeName}</strong>
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <p className="text-sm text-gray-500">
+                Pending Leaves
+              </p>
 
-              <div style={styles.role}>
-                Employee
-              </div>
+              <h2 className="mt-2 text-3xl font-bold text-orange-600">
+                {pendingLeaves.length}
+              </h2>
             </div>
-          </div>
 
-        </header>
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <p className="text-sm text-gray-500">
+                My Tasks
+              </p>
 
-        <section style={styles.content}>
+              <h2 className="mt-2 text-3xl font-bold text-orange-600">
+                {employeeTasks.length}
+              </h2>
+            </div>
 
-          <h1 style={styles.heading}>
-            My Dashboard
-          </h1>
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <p className="text-sm text-gray-500">
+                Performance Records
+              </p>
 
-          <p style={styles.description}>
-            View your work information and activities
-          </p>
-
-          <div style={styles.cardGrid}>
-
-            <StatCard
-              title="Active Tasks"
-              value={pendingTasks}
-              icon="📋"
-            />
-
-            <StatCard
-              title="Completed Tasks"
-              value={completedTasks}
-              icon="✅"
-            />
-
-            <StatCard
-              title="Pending Leaves"
-              value={pendingLeaves}
-              icon="📅"
-            />
-
-            <StatCard
-              title="Documents"
-              value={myDocuments.length}
-              icon="📄"
-            />
-
-            <StatCard
-              title="Payroll Records"
-              value={myPayroll.length}
-              icon="💰"
-            />
-
-            <StatCard
-              title="Performance Reviews"
-              value={myPerformance.length}
-              icon="⭐"
-            />
-
-          </div>
-
-          <div style={styles.section}>
-
-            <h2>Quick Actions</h2>
-
-            <div style={styles.quickGrid}>
-
-              <button
-                style={styles.quickButton}
-                onClick={() => handleMenuClick("Tasks")}
-              >
-                📋 View Tasks
-              </button>
-
-              <button
-                style={styles.quickButton}
-                onClick={() => handleMenuClick("Leave")}
-              >
-                📅 Apply Leave
-              </button>
-
-              <button
-                style={styles.quickButton}
-                onClick={() => handleMenuClick("Payroll")}
-              >
-                💰 View Payroll
-              </button>
-
-              <button
-                style={styles.quickButton}
-                onClick={() => handleMenuClick("Profile")}
-              >
-                👤 My Profile
-              </button>
-
+              <h2 className="mt-2 text-3xl font-bold text-orange-600">
+                {employeePerformance.length}
+              </h2>
             </div>
 
           </div>
 
-        </section>
+          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
 
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <h2 className="mb-4 text-xl font-bold text-gray-800">
+                Recent Tasks
+              </h2>
+
+              {employeeTasks.length === 0 ? (
+                <p className="text-gray-500">
+                  No tasks found.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {employeeTasks.slice(0, 5).map((task) => (
+                    <div
+                      key={
+                        task.id ||
+                        task.task_id ||
+                        task._id
+                      }
+                      className="rounded-xl border border-gray-100 p-4"
+                    >
+                      <p className="font-semibold text-gray-800">
+                        {task.title || task.name}
+                      </p>
+
+                      <p className="mt-1 text-sm text-gray-500">
+                        {task.status || "Status not provided"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <h2 className="mb-4 text-xl font-bold text-gray-800">
+                Notifications
+              </h2>
+
+              {unreadNotifications.length === 0 ? (
+                <p className="text-gray-500">
+                  No unread notifications.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {unreadNotifications
+                    .slice(0, 5)
+                    .map((notification) => (
+                      <div
+                        key={
+                          notification.id ||
+                          notification.notification_id ||
+                          notification._id
+                        }
+                        className="rounded-xl border border-orange-100 bg-orange-50 p-4"
+                      >
+                        <p className="font-semibold text-gray-800">
+                          {notification.title}
+                        </p>
+
+                        <p className="mt-1 text-sm text-gray-600">
+                          {notification.message}
+                        </p>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
       </main>
-
     </div>
   );
 }
-
-function StatCard({ title, value, icon }) {
-  return (
-    <div style={styles.statCard}>
-
-      <div>
-        <p style={styles.statTitle}>{title}</p>
-        <h2 style={styles.statValue}>{value}</h2>
-      </div>
-
-      <div style={styles.statIcon}>
-        {icon}
-      </div>
-
-    </div>
-  );
-}
-
-function getIcon(menu) {
-  const icons = {
-    Dashboard: "📊",
-    Attendance: "🕒",
-    Tasks: "📋",
-    Leave: "📅",
-    Performance: "⭐",
-    Documents: "📄",
-    Payroll: "💰",
-    Notifications: "🔔",
-    Profile: "👤",
-  };
-
-  return icons[menu] || "•";
-}
-
-const styles = {
-  container: {
-    display: "flex",
-    minHeight: "100vh",
-    background: "#f5f7fb",
-    fontFamily: "Arial, sans-serif",
-  },
-
-  sidebar: {
-    width: "250px",
-    background: "#111827",
-    color: "white",
-    padding: "20px 15px",
-    boxSizing: "border-box",
-    position: "fixed",
-    top: 0,
-    bottom: 0,
-    left: 0,
-    display: "flex",
-    flexDirection: "column",
-  },
-
-  logo: {
-    width: "45px",
-    height: "45px",
-    background: "#2563eb",
-    borderRadius: "10px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontWeight: "bold",
-    fontSize: "18px",
-  },
-
-  logoText: {
-    fontSize: "14px",
-    fontWeight: "bold",
-    marginTop: "8px",
-    marginBottom: "25px",
-  },
-
-  nav: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "5px",
-    flex: 1,
-    overflowY: "auto",
-  },
-
-  menuItem: {
-    padding: "12px",
-    borderRadius: "7px",
-    display: "flex",
-    gap: "12px",
-    alignItems: "center",
-    cursor: "pointer",
-    fontSize: "14px",
-  },
-
-  activeMenu: {
-    background: "#2563eb",
-  },
-
-  logout: {
-    marginTop: "10px",
-    padding: "12px",
-    background: "#dc2626",
-    color: "white",
-    border: "none",
-    borderRadius: "7px",
-    cursor: "pointer",
-    fontWeight: "bold",
-    flexShrink: 0,
-  },
-
-  main: {
-    marginLeft: "250px",
-    width: "calc(100% - 250px)",
-  },
-
-  navbar: {
-    height: "75px",
-    background: "white",
-    borderBottom: "1px solid #e5e7eb",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "0 30px",
-  },
-
-  pageTitle: {
-    margin: 0,
-    fontSize: "20px",
-  },
-
-  welcome: {
-    margin: "4px 0 0",
-    color: "#6b7280",
-    fontSize: "12px",
-  },
-
-  profile: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-  },
-
-  avatar: {
-    width: "40px",
-    height: "40px",
-    borderRadius: "50%",
-    background: "#2563eb",
-    color: "white",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontWeight: "bold",
-  },
-
-  role: {
-    fontSize: "11px",
-    color: "#6b7280",
-  },
-
-  content: {
-    padding: "30px",
-  },
-
-  heading: {
-    margin: 0,
-    fontSize: "27px",
-  },
-
-  description: {
-    color: "#6b7280",
-    marginBottom: "25px",
-  },
-
-  cardGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: "18px",
-  },
-
-  statCard: {
-    background: "white",
-    padding: "20px",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  statTitle: {
-    margin: 0,
-    color: "#6b7280",
-    fontSize: "13px",
-  },
-
-  statValue: {
-    margin: "7px 0 0",
-    fontSize: "27px",
-  },
-
-  statIcon: {
-    width: "45px",
-    height: "45px",
-    borderRadius: "10px",
-    background: "#eff6ff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "22px",
-  },
-
-  section: {
-    marginTop: "30px",
-    background: "white",
-    padding: "25px",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-  },
-
-  quickGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: "12px",
-    marginTop: "15px",
-  },
-
-  quickButton: {
-    padding: "14px",
-    background: "#f9fafb",
-    border: "1px solid #e5e7eb",
-    borderRadius: "7px",
-    cursor: "pointer",
-  },
-};
 
 export default Dashboard;

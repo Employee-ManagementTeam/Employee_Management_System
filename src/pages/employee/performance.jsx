@@ -1,143 +1,168 @@
 import { useEffect, useState } from "react";
+import EmployeeSidebar from "../../components/EmployeeSidebar";
+import Navbar from "../../components/navbar";
+import { getEmployees, getPerformance } from "../../api/api";
 
 function Performance() {
   const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadPerformance();
   }, []);
 
-  const loadPerformance = () => {
-    const email = localStorage.getItem("email");
+  const loadPerformance = async () => {
+    try {
+      const userId = localStorage.getItem("userId");
 
-    const employees =
-      JSON.parse(localStorage.getItem("emsEmployees")) || [];
+      const employeesResponse = await getEmployees();
 
-    const employee = employees.find(
-      (item) => item.email === email
-    );
+      const employees =
+        Array.isArray(employeesResponse)
+          ? employeesResponse
+          : employeesResponse.employees ||
+            employeesResponse.data ||
+            [];
 
-    const name =
-      employee?.name ||
-      localStorage.getItem("username") ||
-      "Employee";
+      const employee = employees.find(
+        (item) =>
+          String(item.user_id) === String(userId) ||
+          String(item.userId) === String(userId)
+      );
 
-    const saved =
-      JSON.parse(localStorage.getItem("emsPerformance")) || [];
+      const employeeId =
+        employee?.id ||
+        employee?.employee_id ||
+        employee?._id;
 
-    setRecords(
-      saved.filter(
-        (item) => item.employee === name
-      )
-    );
+      const response = await getPerformance();
+
+      const performance =
+        Array.isArray(response)
+          ? response
+          : response.performance ||
+            response.data ||
+            [];
+
+      const mine = performance.filter(
+        (item) =>
+          String(item.employee_id) === String(employeeId) ||
+          String(item.user_id) === String(userId)
+      );
+
+      setRecords(mine);
+    } catch (err) {
+      setError(
+        err.message || "Failed to load performance."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const average =
-    records.length > 0
-      ? (
-          records.reduce(
-            (sum, item) =>
-              sum + Number(item.rating || 0),
-            0
-          ) / records.length
-        ).toFixed(1)
-      : "0";
-
   return (
-    <div style={styles.page}>
+    <div className="min-h-screen bg-gray-100">
+      <EmployeeSidebar />
+      <Navbar />
 
-      <h1>My Performance</h1>
+      <main className="ml-64 pt-20">
+        <div className="p-6">
 
-      <p style={styles.subtitle}>
-        View your performance evaluations
-      </p>
+          <h1 className="text-3xl font-bold text-gray-800">
+            Performance
+          </h1>
 
-      <div style={styles.summary}>
+          <p className="mt-1 text-gray-500">
+            Your performance evaluation records.
+          </p>
 
-        <p>Average Rating</p>
+          {error && (
+            <div className="mt-5 rounded-xl bg-red-50 p-4 text-red-700">
+              {error}
+            </div>
+          )}
 
-        <h2>
-          ⭐ {average}/5
-        </h2>
-
-      </div>
-
-      <div style={styles.grid}>
-
-        {records.map((item) => (
-          <div
-            key={item.id}
-            style={styles.card}
-          >
-
-            <h2>{item.period}</h2>
-
-            <p>
-              <strong>Rating:</strong>{" "}
-              ⭐ {item.rating}/5
+          {loading ? (
+            <p className="mt-6 text-gray-500">
+              Loading performance...
             </p>
+          ) : records.length === 0 ? (
+            <div className="mt-6 rounded-2xl bg-white p-8 text-center shadow-sm">
+              <p className="text-gray-500">
+                No performance records found.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 space-y-5">
+              {records.map((record) => (
+                <div
+                  key={
+                    record.id ||
+                    record.performance_id ||
+                    record._id
+                  }
+                  className="rounded-2xl bg-white p-6 shadow-sm"
+                >
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
 
-            <p>
-              <strong>Feedback:</strong>
-            </p>
+                    <div>
+                      <p className="text-sm text-gray-500">
+                        Rating
+                      </p>
 
-            <p>{item.feedback}</p>
+                      <p className="mt-1 text-2xl font-bold text-orange-600">
+                        {record.rating ??
+                          record.score ??
+                          "Not provided"}
+                      </p>
+                    </div>
 
-          </div>
-        ))}
+                    <div>
+                      <p className="text-sm text-gray-500">
+                        Review Date
+                      </p>
 
-      </div>
+                      <p className="mt-1 font-semibold text-gray-800">
+                        {record.review_date ||
+                          record.date ||
+                          "Not provided"}
+                      </p>
+                    </div>
 
-      {records.length === 0 && (
-        <div style={styles.empty}>
-          No performance records available.
+                    <div>
+                      <p className="text-sm text-gray-500">
+                        Status
+                      </p>
+
+                      <p className="mt-1 font-semibold text-gray-800">
+                        {record.status ||
+                          "Not provided"}
+                      </p>
+                    </div>
+
+                  </div>
+
+                  <div className="mt-5">
+                    <p className="text-sm text-gray-500">
+                      Feedback
+                    </p>
+
+                    <p className="mt-2 text-gray-700">
+                      {record.feedback ||
+                        record.comments ||
+                        "No feedback provided."}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
         </div>
-      )}
-
+      </main>
     </div>
   );
 }
-
-const styles = {
-  page: {
-    padding: "30px",
-    minHeight: "100vh",
-    background: "#f5f7fb",
-    fontFamily: "Arial, sans-serif",
-  },
-
-  subtitle: {
-    color: "#6b7280",
-  },
-
-  summary: {
-    background: "white",
-    padding: "20px",
-    margin: "25px 0",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-    maxWidth: "300px",
-  },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: "18px",
-  },
-
-  card: {
-    background: "white",
-    padding: "20px",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-  },
-
-  empty: {
-    background: "white",
-    padding: "25px",
-    borderRadius: "10px",
-    color: "#6b7280",
-  },
-};
 
 export default Performance;

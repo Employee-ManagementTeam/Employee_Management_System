@@ -1,265 +1,208 @@
 import { useEffect, useState } from "react";
+import ManagerSidebar from "../../components/ManagerSidebar";
+import Navbar from "../../components/navbar";
+
+import {
+  getLeaves,
+  approveLeave,
+  rejectLeave,
+} from "../../api/api";
 
 function LeaveApprovals() {
   const [leaves, setLeaves] = useState([]);
-  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState(null);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     loadLeaves();
   }, []);
 
-  const loadLeaves = () => {
-    setLeaves(
-      JSON.parse(localStorage.getItem("emsLeaves")) || []
-    );
+  const loadLeaves = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await getLeaves();
+
+      setLeaves(
+        response?.leaves ||
+          response?.data ||
+          (Array.isArray(response) ? response : [])
+      );
+    } catch (err) {
+      setError(err.message || "Failed to load leave requests.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const updateStatus = (id, status) => {
-    const updated = leaves.map((leave) =>
-      leave.id === id
-        ? { ...leave, status }
-        : leave
-    );
+  const handleApprove = async (id) => {
+    try {
+      setProcessingId(id);
+      setError("");
+      setMessage("");
 
-    setLeaves(updated);
+      await approveLeave(id);
 
-    localStorage.setItem(
-      "emsLeaves",
-      JSON.stringify(updated)
-    );
+      setMessage("Leave approved successfully.");
+      await loadLeaves();
+    } catch (err) {
+      setError(err.message || "Failed to approve leave.");
+    } finally {
+      setProcessingId(null);
+    }
   };
 
-  const filtered = leaves.filter((leave) =>
-    `${leave.employee} ${leave.type} ${leave.status}`
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  );
+  const handleReject = async (id) => {
+    try {
+      setProcessingId(id);
+      setError("");
+      setMessage("");
 
-  const pending = leaves.filter(
-    (leave) => leave.status === "Pending"
-  ).length;
+      await rejectLeave(id);
 
-  const approved = leaves.filter(
-    (leave) => leave.status === "Approved"
-  ).length;
-
-  const rejected = leaves.filter(
-    (leave) => leave.status === "Rejected"
-  ).length;
+      setMessage("Leave rejected successfully.");
+      await loadLeaves();
+    } catch (err) {
+      setError(err.message || "Failed to reject leave.");
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
   return (
-    <div style={styles.page}>
+    <div className="min-h-screen bg-gray-50">
+      <ManagerSidebar />
+      <Navbar />
 
-      <h1>Leave Approvals</h1>
+      <main className="ml-64 pt-20">
+        <div className="p-6">
+          <h1 className="text-3xl font-bold text-gray-800">
+            Leave Approvals
+          </h1>
 
-      <p style={styles.subtitle}>
-        Review and manage employee leave requests
-      </p>
-
-      <div style={styles.cards}>
-
-        <Stat title="Total" value={leaves.length} />
-        <Stat title="Pending" value={pending} />
-        <Stat title="Approved" value={approved} />
-        <Stat title="Rejected" value={rejected} />
-
-      </div>
-
-      <input
-        placeholder="Search leave requests..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        style={styles.search}
-      />
-
-      <div style={styles.tableCard}>
-
-        <table style={styles.table}>
-
-          <thead>
-            <tr>
-              <th style={styles.th}>Employee</th>
-              <th style={styles.th}>Type</th>
-              <th style={styles.th}>From</th>
-              <th style={styles.th}>To</th>
-              <th style={styles.th}>Reason</th>
-              <th style={styles.th}>Status</th>
-              <th style={styles.th}>Action</th>
-            </tr>
-          </thead>
-
-          <tbody>
-
-            {filtered.map((leave) => (
-
-              <tr key={leave.id}>
-
-                <td style={styles.td}>
-                  {leave.employee}
-                </td>
-
-                <td style={styles.td}>
-                  {leave.type}
-                </td>
-
-                <td style={styles.td}>
-                  {leave.fromDate}
-                </td>
-
-                <td style={styles.td}>
-                  {leave.toDate}
-                </td>
-
-                <td style={styles.td}>
-                  {leave.reason}
-                </td>
-
-                <td style={styles.td}>
-                  {leave.status}
-                </td>
-
-                <td style={styles.td}>
-
-                  {leave.status === "Pending" && (
-                    <>
-                      <button
-                        onClick={() =>
-                          updateStatus(
-                            leave.id,
-                            "Approved"
-                          )
-                        }
-                        style={styles.approve}
-                      >
-                        Approve
-                      </button>
-
-                      <button
-                        onClick={() =>
-                          updateStatus(
-                            leave.id,
-                            "Rejected"
-                          )
-                        }
-                        style={styles.reject}
-                      >
-                        Reject
-                      </button>
-                    </>
-                  )}
-
-                </td>
-
-              </tr>
-
-            ))}
-
-          </tbody>
-
-        </table>
-
-        {filtered.length === 0 && (
-          <p style={styles.empty}>
-            No leave requests found.
+          <p className="mt-1 text-gray-500">
+            Review and manage employee leave requests.
           </p>
-        )}
 
-      </div>
+          {message && (
+            <div className="mt-5 rounded-lg bg-green-50 p-4 text-green-600">
+              {message}
+            </div>
+          )}
 
+          {error && (
+            <div className="mt-5 rounded-lg bg-red-50 p-4 text-red-600">
+              {error}
+            </div>
+          )}
+
+          <div className="mt-6 overflow-x-auto rounded-xl bg-white shadow-sm">
+            {loading ? (
+              <div className="p-8 text-center text-gray-500">
+                Loading leave requests...
+              </div>
+            ) : leaves.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                No leave requests found.
+              </div>
+            ) : (
+              <table className="w-full text-left">
+                <thead className="bg-gray-50 text-sm text-gray-500">
+                  <tr>
+                    <th className="px-5 py-3">Employee</th>
+                    <th className="px-5 py-3">Leave Type</th>
+                    <th className="px-5 py-3">Start</th>
+                    <th className="px-5 py-3">End</th>
+                    <th className="px-5 py-3">Reason</th>
+                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3">Action</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {leaves.map((leave, index) => {
+                    const id =
+                      leave.id || leave._id;
+
+                    const status =
+                      String(
+                        leave.status || ""
+                      ).toLowerCase();
+
+                    return (
+                      <tr
+                        key={id || index}
+                        className="border-t border-gray-100"
+                      >
+                        <td className="px-5 py-4">
+                          {leave.employee_name ||
+                            leave.employee_id ||
+                            "-"}
+                        </td>
+
+                        <td className="px-5 py-4">
+                          {leave.leave_type || "-"}
+                        </td>
+
+                        <td className="px-5 py-4">
+                          {leave.start_date || "-"}
+                        </td>
+
+                        <td className="px-5 py-4">
+                          {leave.end_date || "-"}
+                        </td>
+
+                        <td className="px-5 py-4">
+                          {leave.reason || "-"}
+                        </td>
+
+                        <td className="px-5 py-4">
+                          {leave.status || "-"}
+                        </td>
+
+                        <td className="px-5 py-4">
+                          {status === "pending" ? (
+                            <div className="flex gap-2">
+                              <button
+                                disabled={processingId === id}
+                                onClick={() =>
+                                  handleApprove(id)
+                                }
+                                className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-600"
+                              >
+                                Approve
+                              </button>
+
+                              <button
+                                disabled={processingId === id}
+                                onClick={() =>
+                                  handleReject(id)
+                                }
+                                className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-400">
+                              No action
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
-
-function Stat({ title, value }) {
-  return (
-    <div style={styles.stat}>
-      <p>{title}</p>
-      <h2>{value}</h2>
-    </div>
-  );
-}
-
-const styles = {
-  page: {
-    padding: "30px",
-    minHeight: "100vh",
-    background: "#f5f7fb",
-    fontFamily: "Arial, sans-serif",
-  },
-
-  subtitle: {
-    color: "#6b7280",
-  },
-
-  cards: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: "15px",
-    margin: "25px 0",
-  },
-
-  stat: {
-    background: "white",
-    padding: "18px",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-  },
-
-  search: {
-    width: "100%",
-    maxWidth: "400px",
-    padding: "12px",
-    marginBottom: "20px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-  },
-
-  tableCard: {
-    background: "white",
-    borderRadius: "10px",
-    overflow: "auto",
-    border: "1px solid #e5e7eb",
-  },
-
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-
-  th: {
-    padding: "14px",
-    textAlign: "left",
-    background: "#f9fafb",
-  },
-
-  td: {
-    padding: "14px",
-    borderTop: "1px solid #e5e7eb",
-  },
-
-  approve: {
-    padding: "7px 10px",
-    marginRight: "5px",
-    background: "#16a34a",
-    color: "white",
-    border: "none",
-    borderRadius: "5px",
-    cursor: "pointer",
-  },
-
-  reject: {
-    padding: "7px 10px",
-    background: "#dc2626",
-    color: "white",
-    border: "none",
-    borderRadius: "5px",
-    cursor: "pointer",
-  },
-
-  empty: {
-    padding: "20px",
-    color: "#6b7280",
-  },
-};
 
 export default LeaveApprovals;

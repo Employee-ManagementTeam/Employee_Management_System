@@ -1,625 +1,193 @@
 import { useEffect, useState } from "react";
+import Sidebar from "../../components/sidebar";
+import Navbar from "../../components/navbar";
+
+import {
+  getPayroll,
+  createPayroll,
+} from "../../api/api";
 
 function Payroll() {
   const [payroll, setPayroll] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
+  const [employeeId, setEmployeeId] = useState("");
 
-  const [formData, setFormData] = useState({
-    employee: "",
-    month: "",
-    basicSalary: "",
-    allowances: "",
-    deductions: "",
-    status: "Pending",
-  });
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const loadPayroll = async () => {
+    try {
+      const response = await getPayroll();
+
+      const data = Array.isArray(response)
+        ? response
+        : response?.payroll ||
+          response?.data ||
+          [];
+
+      setPayroll(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
   useEffect(() => {
-    const savedPayroll =
-      JSON.parse(localStorage.getItem("emsPayroll")) || [];
-
-    const savedEmployees =
-      JSON.parse(localStorage.getItem("emsEmployees")) || [];
-
-    setPayroll(savedPayroll);
-    setEmployees(savedEmployees);
+    loadPayroll();
   }, []);
 
-  const savePayroll = (data) => {
-    setPayroll(data);
-    localStorage.setItem("emsPayroll", JSON.stringify(data));
-  };
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handleSubmit = (e) => {
+  const generatePayroll = async (e) => {
     e.preventDefault();
 
-    if (
-      !formData.employee ||
-      !formData.month ||
-      !formData.basicSalary
-    ) {
-      alert("Please fill all required fields.");
-      return;
+    try {
+      await createPayroll(employeeId);
+
+      setMessage(
+        "Payroll generated successfully."
+      );
+
+      setEmployeeId("");
+
+      await loadPayroll();
+    } catch (err) {
+      setError(err.message);
     }
-
-    const basic = Number(formData.basicSalary) || 0;
-    const allowances = Number(formData.allowances) || 0;
-    const deductions = Number(formData.deductions) || 0;
-
-    const netSalary =
-      basic + allowances - deductions;
-
-    const newPayroll = {
-      id: Date.now(),
-      ...formData,
-      basicSalary: basic,
-      allowances,
-      deductions,
-      netSalary,
-    };
-
-    savePayroll([...payroll, newPayroll]);
-
-    setFormData({
-      employee: "",
-      month: "",
-      basicSalary: "",
-      allowances: "",
-      deductions: "",
-      status: "Pending",
-    });
-
-    setShowForm(false);
-  };
-
-  const updateStatus = (id, status) => {
-    const updated = payroll.map((record) =>
-      record.id === id
-        ? { ...record, status }
-        : record
-    );
-
-    savePayroll(updated);
-  };
-
-  const deletePayroll = (id) => {
-    if (!window.confirm("Delete this payroll record?")) {
-      return;
-    }
-
-    const updated = payroll.filter(
-      (record) => record.id !== id
-    );
-
-    savePayroll(updated);
-  };
-
-  const filteredPayroll = payroll.filter((record) => {
-    const text = search.toLowerCase();
-
-    return (
-      record.employee.toLowerCase().includes(text) ||
-      record.month.toLowerCase().includes(text)
-    );
-  });
-
-  const totalPayroll = payroll.reduce(
-    (total, record) =>
-      total + Number(record.netSalary || 0),
-    0
-  );
-
-  const paid = payroll.filter(
-    (record) => record.status === "Paid"
-  ).length;
-
-  const pending = payroll.filter(
-    (record) => record.status === "Pending"
-  ).length;
-
-  const formatCurrency = (amount) => {
-    return `₹${Number(amount || 0).toLocaleString("en-IN")}`;
   };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
-        <div>
-          <h1 style={styles.title}>Payroll Management</h1>
+    <div className="min-h-screen bg-gray-100">
+      <Sidebar />
+      <Navbar />
 
-          <p style={styles.subtitle}>
-            Manage employee salary and payroll records
+      <main className="ml-64 pt-20">
+        <div className="p-8">
+
+          <h1 className="text-3xl font-bold text-gray-800">
+            Payroll
+          </h1>
+
+          <p className="mb-8 text-gray-500">
+            Generate and view payroll information
           </p>
-        </div>
 
-        <button
-          style={styles.addButton}
-          onClick={() => setShowForm(true)}
-        >
-          + Add Payroll
-        </button>
-      </div>
-
-      <div style={styles.summaryGrid}>
-        <SummaryCard
-          title="Payroll Records"
-          value={payroll.length}
-          icon="💰"
-        />
-
-        <SummaryCard
-          title="Total Net Salary"
-          value={formatCurrency(totalPayroll)}
-          icon="💵"
-        />
-
-        <SummaryCard
-          title="Paid"
-          value={paid}
-          icon="✅"
-        />
-
-        <SummaryCard
-          title="Pending"
-          value={pending}
-          icon="⏳"
-        />
-      </div>
-
-      {showForm && (
-        <div style={styles.formCard}>
-          <h2 style={styles.formTitle}>
-            Add Payroll Record
-          </h2>
-
-          <form onSubmit={handleSubmit}>
-            <div style={styles.formGrid}>
-              <select
-                name="employee"
-                value={formData.employee}
-                onChange={handleChange}
-                style={styles.input}
-              >
-                <option value="">
-                  Select Employee
-                </option>
-
-                {employees.map((employee) => (
-                  <option
-                    key={employee.id}
-                    value={employee.name}
-                  >
-                    {employee.name}
-                  </option>
-                ))}
-              </select>
-
-              <input
-                type="text"
-                name="month"
-                placeholder="Month (e.g. October 2026)"
-                value={formData.month}
-                onChange={handleChange}
-                style={styles.input}
-              />
-
-              <input
-                type="number"
-                name="basicSalary"
-                placeholder="Basic Salary"
-                value={formData.basicSalary}
-                onChange={handleChange}
-                style={styles.input}
-                min="0"
-              />
-
-              <input
-                type="number"
-                name="allowances"
-                placeholder="Allowances"
-                value={formData.allowances}
-                onChange={handleChange}
-                style={styles.input}
-                min="0"
-              />
-
-              <input
-                type="number"
-                name="deductions"
-                placeholder="Deductions"
-                value={formData.deductions}
-                onChange={handleChange}
-                style={styles.input}
-                min="0"
-              />
-
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                style={styles.input}
-              >
-                <option value="Pending">Pending</option>
-                <option value="Paid">Paid</option>
-              </select>
+          {message && (
+            <div className="mb-4 rounded-xl bg-green-50 p-4 text-green-700">
+              {message}
             </div>
+          )}
 
-            <div style={styles.formButtons}>
-              <button
-                type="submit"
-                style={styles.saveButton}
-              >
-                Save Payroll
+          {error && (
+            <div className="mb-4 rounded-xl bg-red-50 p-4 text-red-600">
+              {error}
+            </div>
+          )}
+
+          <form
+            onSubmit={generatePayroll}
+            className="mb-8 rounded-2xl bg-white p-6 shadow-sm"
+          >
+            <h2 className="mb-5 text-xl font-bold">
+              Generate Payroll
+            </h2>
+
+            <div className="flex gap-3">
+
+              <input
+                value={employeeId}
+                onChange={(e) =>
+                  setEmployeeId(e.target.value)
+                }
+                placeholder="Employee ID"
+                className="w-80 rounded-xl border px-4 py-3"
+                required
+              />
+
+              <button className="rounded-xl bg-orange-600 px-6 py-3 font-semibold text-white hover:bg-orange-700">
+                Generate
               </button>
 
-              <button
-                type="button"
-                style={styles.cancelButton}
-                onClick={() => setShowForm(false)}
-              >
-                Cancel
-              </button>
             </div>
           </form>
-        </div>
-      )}
 
-      <div style={styles.searchContainer}>
-        <input
-          type="text"
-          placeholder="Search payroll records..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={styles.search}
-        />
+          <div className="rounded-2xl bg-white p-6 shadow-sm">
 
-        <span style={styles.count}>
-          {filteredPayroll.length} Records
-        </span>
-      </div>
+            <h2 className="mb-5 text-xl font-bold">
+              Payroll Records
+            </h2>
 
-      <div style={styles.tableCard}>
-        {filteredPayroll.length === 0 ? (
-          <div style={styles.empty}>
-            <div style={styles.emptyIcon}>💰</div>
+            <div className="overflow-x-auto">
 
-            <h3>No payroll records found</h3>
+              <table className="w-full">
 
-            <p>
-              Add a payroll record to see it here.
-            </p>
-          </div>
-        ) : (
-          <div style={styles.tableWrapper}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>Employee</th>
-                  <th style={styles.th}>Month</th>
-                  <th style={styles.th}>Basic</th>
-                  <th style={styles.th}>Allowances</th>
-                  <th style={styles.th}>Deductions</th>
-                  <th style={styles.th}>Net Salary</th>
-                  <th style={styles.th}>Status</th>
-                  <th style={styles.th}>Action</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {filteredPayroll.map((record) => (
-                  <tr key={record.id}>
-                    <td style={styles.td}>
-                      <strong>{record.employee}</strong>
-                    </td>
-
-                    <td style={styles.td}>
-                      {record.month}
-                    </td>
-
-                    <td style={styles.td}>
-                      {formatCurrency(record.basicSalary)}
-                    </td>
-
-                    <td style={styles.td}>
-                      {formatCurrency(record.allowances)}
-                    </td>
-
-                    <td style={styles.td}>
-                      {formatCurrency(record.deductions)}
-                    </td>
-
-                    <td style={styles.netSalary}>
-                      {formatCurrency(record.netSalary)}
-                    </td>
-
-                    <td style={styles.td}>
-                      <select
-                        value={record.status}
-                        onChange={(e) =>
-                          updateStatus(
-                            record.id,
-                            e.target.value
-                          )
-                        }
-                        style={styles.statusSelect}
-                      >
-                        <option value="Pending">
-                          Pending
-                        </option>
-
-                        <option value="Paid">
-                          Paid
-                        </option>
-                      </select>
-                    </td>
-
-                    <td style={styles.td}>
-                      <button
-                        style={styles.deleteButton}
-                        onClick={() =>
-                          deletePayroll(record.id)
-                        }
-                      >
-                        Delete
-                      </button>
-                    </td>
+                <thead>
+                  <tr className="border-b text-left text-sm text-gray-500">
+                    <th className="p-3">Employee</th>
+                    <th className="p-3">Basic Salary</th>
+                    <th className="p-3">Allowances</th>
+                    <th className="p-3">Deductions</th>
+                    <th className="p-3">Net Salary</th>
+                    <th className="p-3">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+
+                <tbody>
+                  {payroll.map((item, index) => {
+
+                    const id =
+                      item._id ||
+                      item.id ||
+                      index;
+
+                    return (
+                      <tr
+                        key={id}
+                        className="border-b hover:bg-orange-50"
+                      >
+                        <td className="p-3">
+                          {item.employee_id || "-"}
+                        </td>
+
+                        <td className="p-3">
+                          ₹
+                          {item.basic_salary ??
+                            "-"}
+                        </td>
+
+                        <td className="p-3">
+                          ₹
+                          {item.allowances ??
+                            "-"}
+                        </td>
+
+                        <td className="p-3">
+                          ₹
+                          {item.deductions ??
+                            "-"}
+                        </td>
+
+                        <td className="p-3 font-bold text-orange-600">
+                          ₹
+                          {item.net_salary ??
+                            item.total_salary ??
+                            "-"}
+                        </td>
+
+                        <td className="p-3">
+                          {item.status || "-"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+
+              </table>
+
+            </div>
+
           </div>
-        )}
-      </div>
+
+        </div>
+      </main>
     </div>
   );
 }
-
-function SummaryCard({ title, value, icon }) {
-  return (
-    <div style={styles.summaryCard}>
-      <div>
-        <p style={styles.summaryTitle}>{title}</p>
-
-        <h2 style={styles.summaryValue}>
-          {value}
-        </h2>
-      </div>
-
-      <div style={styles.summaryIcon}>
-        {icon}
-      </div>
-    </div>
-  );
-}
-
-const styles = {
-  page: {
-    padding: "30px",
-    background: "#f5f7fb",
-    minHeight: "calc(100vh - 80px)",
-  },
-
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "25px",
-  },
-
-  title: {
-    margin: 0,
-    fontSize: "26px",
-    color: "#111827",
-  },
-
-  subtitle: {
-    margin: "5px 0 0",
-    color: "#6b7280",
-    fontSize: "14px",
-  },
-
-  addButton: {
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    padding: "12px 18px",
-    borderRadius: "7px",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-
-  summaryGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: "18px",
-    marginBottom: "25px",
-  },
-
-  summaryCard: {
-    background: "white",
-    padding: "20px",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  summaryTitle: {
-    margin: 0,
-    color: "#6b7280",
-    fontSize: "13px",
-  },
-
-  summaryValue: {
-    margin: "7px 0 0",
-    fontSize: "24px",
-    color: "#111827",
-  },
-
-  summaryIcon: {
-    width: "45px",
-    height: "45px",
-    borderRadius: "10px",
-    background: "#eff6ff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "23px",
-  },
-
-  formCard: {
-    background: "white",
-    padding: "25px",
-    borderRadius: "10px",
-    marginBottom: "20px",
-    border: "1px solid #e5e7eb",
-  },
-
-  formTitle: {
-    marginTop: 0,
-    marginBottom: "20px",
-  },
-
-  formGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "15px",
-  },
-
-  input: {
-    width: "100%",
-    boxSizing: "border-box",
-    padding: "12px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-    fontSize: "14px",
-  },
-
-  formButtons: {
-    display: "flex",
-    gap: "10px",
-    marginTop: "20px",
-  },
-
-  saveButton: {
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    padding: "11px 18px",
-    borderRadius: "7px",
-    cursor: "pointer",
-  },
-
-  cancelButton: {
-    background: "#e5e7eb",
-    color: "#374151",
-    border: "none",
-    padding: "11px 18px",
-    borderRadius: "7px",
-    cursor: "pointer",
-  },
-
-  searchContainer: {
-    background: "white",
-    padding: "18px",
-    borderRadius: "10px",
-    marginBottom: "20px",
-    border: "1px solid #e5e7eb",
-    display: "flex",
-    gap: "15px",
-    alignItems: "center",
-  },
-
-  search: {
-    flex: 1,
-    padding: "11px 14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-    fontSize: "14px",
-  },
-
-  count: {
-    color: "#6b7280",
-    fontSize: "13px",
-  },
-
-  tableCard: {
-    background: "white",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-    overflow: "hidden",
-  },
-
-  tableWrapper: {
-    overflowX: "auto",
-  },
-
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-
-  th: {
-    textAlign: "left",
-    padding: "15px",
-    background: "#f9fafb",
-    color: "#374151",
-    fontSize: "13px",
-    borderBottom: "1px solid #e5e7eb",
-    whiteSpace: "nowrap",
-  },
-
-  td: {
-    padding: "15px",
-    borderBottom: "1px solid #f1f5f9",
-    color: "#4b5563",
-    fontSize: "13px",
-    whiteSpace: "nowrap",
-  },
-
-  netSalary: {
-    padding: "15px",
-    borderBottom: "1px solid #f1f5f9",
-    color: "#111827",
-    fontSize: "13px",
-    fontWeight: "bold",
-    whiteSpace: "nowrap",
-  },
-
-  statusSelect: {
-    padding: "7px",
-    border: "1px solid #d1d5db",
-    borderRadius: "5px",
-    cursor: "pointer",
-  },
-
-  deleteButton: {
-    background: "#fee2e2",
-    color: "#991b1b",
-    border: "none",
-    padding: "7px 10px",
-    borderRadius: "5px",
-    cursor: "pointer",
-  },
-
-  empty: {
-    textAlign: "center",
-    padding: "70px 20px",
-    color: "#6b7280",
-  },
-
-  emptyIcon: {
-    fontSize: "45px",
-  },
-};
 
 export default Payroll;

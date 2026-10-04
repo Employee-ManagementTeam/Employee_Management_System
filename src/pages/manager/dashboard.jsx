@@ -1,462 +1,242 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import ManagerSidebar from "../../components/ManagerSidebar";
+import Navbar from "../../components/navbar";
+
+import {
+  getEmployees,
+  getDepartments,
+  getAttendance,
+  getLeaves,
+  getTasks,
+  getPerformance,
+} from "../../api/api";
 
 function Dashboard() {
-  const navigate = useNavigate();
-
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
-  const [tasks, setTasks] = useState([]);
+  const [attendance, setAttendance] = useState([]);
   const [leaves, setLeaves] = useState([]);
-  const [activeMenu, setActiveMenu] = useState("Dashboard");
+  const [tasks, setTasks] = useState([]);
+  const [performance, setPerformance] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    loadData();
+    loadDashboard();
   }, []);
 
-  const loadData = () => {
-    setEmployees(JSON.parse(localStorage.getItem("emsEmployees")) || []);
-    setDepartments(JSON.parse(localStorage.getItem("emsDepartments")) || []);
-    setTasks(JSON.parse(localStorage.getItem("emsTasks")) || []);
-    setLeaves(JSON.parse(localStorage.getItem("emsLeaves")) || []);
-  };
+  const loadDashboard = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-  const handleMenuClick = (menu) => {
-    setActiveMenu(menu);
+      const [
+        employeesResponse,
+        departmentsResponse,
+        attendanceResponse,
+        leavesResponse,
+        tasksResponse,
+        performanceResponse,
+      ] = await Promise.all([
+        getEmployees(),
+        getDepartments(),
+        getAttendance(),
+        getLeaves(),
+        getTasks(),
+        getPerformance(),
+      ]);
 
-    const routes = {
-      Dashboard: "/manager/dashboard",
-      Employees: "/manager/employees",
-      Departments: "/manager/departments",
-      Attendance: "/manager/attendance",
-      "Leave Approvals": "/manager/leaveapprovals",
-      Tasks: "/manager/tasks",
-      Performance: "/manager/performance",
-    };
+      setEmployees(
+        employeesResponse?.employees ||
+          employeesResponse?.data ||
+          (Array.isArray(employeesResponse)
+            ? employeesResponse
+            : [])
+      );
 
-    if (routes[menu]) {
-      navigate(routes[menu]);
+      setDepartments(
+        departmentsResponse?.departments ||
+          departmentsResponse?.data ||
+          (Array.isArray(departmentsResponse)
+            ? departmentsResponse
+            : [])
+      );
+
+      setAttendance(
+        attendanceResponse?.attendance ||
+          attendanceResponse?.data ||
+          (Array.isArray(attendanceResponse)
+            ? attendanceResponse
+            : [])
+      );
+
+      setLeaves(
+        leavesResponse?.leaves ||
+          leavesResponse?.data ||
+          (Array.isArray(leavesResponse)
+            ? leavesResponse
+            : [])
+      );
+
+      setTasks(
+        tasksResponse?.tasks ||
+          tasksResponse?.data ||
+          (Array.isArray(tasksResponse)
+            ? tasksResponse
+            : [])
+      );
+
+      setPerformance(
+        performanceResponse?.performance ||
+          performanceResponse?.data ||
+          (Array.isArray(performanceResponse)
+            ? performanceResponse
+            : [])
+      );
+    } catch (err) {
+      setError(err.message || "Failed to load dashboard.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("userId");
-    localStorage.removeItem("username");
-    localStorage.removeItem("email");
-    localStorage.removeItem("role");
-    navigate("/login");
-  };
-
   const pendingLeaves = leaves.filter(
-    (leave) => leave.status === "Pending"
-  ).length;
-
-  const activeTasks = tasks.filter(
-    (task) => task.status !== "Completed"
-  ).length;
-
-  const completedTasks = tasks.filter(
-    (task) => task.status === "Completed"
-  ).length;
-
-  const menuItems = [
-    "Dashboard",
-    "Employees",
-    "Departments",
-    "Attendance",
-    "Leave Approvals",
-    "Tasks",
-    "Performance",
-  ];
+    (leave) =>
+      String(leave.status || "").toLowerCase() === "pending"
+  );
 
   return (
-    <div style={styles.container}>
+    <div className="min-h-screen bg-gray-50">
+      <ManagerSidebar />
+      <Navbar />
 
-      <aside style={styles.sidebar}>
-
-        <div style={styles.logo}>EMS</div>
-
-        <div style={styles.logoText}>
-          Manager Panel
-        </div>
-
-        <nav style={styles.nav}>
-          {menuItems.map((menu) => (
-            <div
-              key={menu}
-              onClick={() => handleMenuClick(menu)}
-              style={{
-                ...styles.menuItem,
-                ...(activeMenu === menu
-                  ? styles.activeMenu
-                  : {}),
-              }}
-            >
-              <span>{getIcon(menu)}</span>
-              <span>{menu}</span>
-            </div>
-          ))}
-        </nav>
-
-        <button
-          onClick={logout}
-          style={styles.logout}
-        >
-          🚪 Logout
-        </button>
-
-      </aside>
-
-      <main style={styles.main}>
-
-        <header style={styles.navbar}>
-
-          <div>
-            <h2 style={styles.pageTitle}>
+      <main className="ml-64 pt-20">
+        <div className="p-6">
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-800">
               Manager Dashboard
-            </h2>
+            </h1>
 
-            <p style={styles.welcome}>
-              Welcome back, Manager
+            <p className="mt-1 text-gray-500">
+              Overview of your team's activities.
             </p>
           </div>
 
-          <div style={styles.profile}>
-            <div style={styles.avatar}>M</div>
+          {error && (
+            <div className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-red-600">
+              {error}
+            </div>
+          )}
 
-            <div>
-              <strong>Manager</strong>
+          {loading ? (
+            <div className="rounded-xl bg-white p-10 text-center text-gray-500 shadow-sm">
+              Loading dashboard...
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-6">
+                <StatCard
+                  title="Employees"
+                  value={employees.length}
+                />
 
-              <div style={styles.role}>
-                Manager
+                <StatCard
+                  title="Departments"
+                  value={departments.length}
+                />
+
+                <StatCard
+                  title="Attendance"
+                  value={attendance.length}
+                />
+
+                <StatCard
+                  title="Pending Leaves"
+                  value={pendingLeaves.length}
+                />
+
+                <StatCard
+                  title="Tasks"
+                  value={tasks.length}
+                />
+
+                <StatCard
+                  title="Performance"
+                  value={performance.length}
+                />
               </div>
-            </div>
-          </div>
 
-        </header>
+              <div className="mt-6 rounded-xl bg-white shadow-sm">
+                <div className="border-b border-gray-100 p-5">
+                  <h2 className="text-lg font-semibold text-gray-800">
+                    Recent Performance
+                  </h2>
+                </div>
 
-        <section style={styles.content}>
+                {performance.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500">
+                    No performance records found.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead className="bg-gray-50 text-sm text-gray-500">
+                        <tr>
+                          <th className="px-5 py-3">Employee</th>
+                          <th className="px-5 py-3">Rating</th>
+                          <th className="px-5 py-3">Date</th>
+                          <th className="px-5 py-3">Status</th>
+                        </tr>
+                      </thead>
 
-          <h1 style={styles.heading}>
-            Dashboard Overview
-          </h1>
+                      <tbody>
+                        {performance.slice(0, 10).map((item, index) => (
+                          <tr
+                            key={item.id || item._id || index}
+                            className="border-t border-gray-100"
+                          >
+                            <td className="px-5 py-4">
+                              {item.employee_name ||
+                                item.employee_id ||
+                                "-"}
+                            </td>
 
-          <p style={styles.description}>
-            Monitor your team and manage daily activities
-          </p>
+                            <td className="px-5 py-4">
+                              {item.rating ?? "-"}
+                            </td>
 
-          <div style={styles.cardGrid}>
+                            <td className="px-5 py-4">
+                              {item.review_date || "-"}
+                            </td>
 
-            <StatCard
-              title="Team Employees"
-              value={employees.length}
-              icon="👥"
-            />
-
-            <StatCard
-              title="Departments"
-              value={departments.length}
-              icon="🏢"
-            />
-
-            <StatCard
-              title="Pending Leaves"
-              value={pendingLeaves}
-              icon="📅"
-            />
-
-            <StatCard
-              title="Active Tasks"
-              value={activeTasks}
-              icon="📋"
-            />
-
-            <StatCard
-              title="Completed Tasks"
-              value={completedTasks}
-              icon="✅"
-            />
-
-          </div>
-
-          <div style={styles.section}>
-
-            <h2 style={styles.sectionTitle}>
-              Quick Actions
-            </h2>
-
-            <div style={styles.quickGrid}>
-
-              <button
-                style={styles.quickButton}
-                onClick={() => handleMenuClick("Employees")}
-              >
-                👥 View Employees
-              </button>
-
-              <button
-                style={styles.quickButton}
-                onClick={() => handleMenuClick("Tasks")}
-              >
-                📋 Manage Tasks
-              </button>
-
-              <button
-                style={styles.quickButton}
-                onClick={() => handleMenuClick("Leave Approvals")}
-              >
-                📅 Leave Approvals
-              </button>
-
-              <button
-                style={styles.quickButton}
-                onClick={() => handleMenuClick("Performance")}
-              >
-                ⭐ Performance
-              </button>
-
-            </div>
-
-          </div>
-
-        </section>
-
+                            <td className="px-5 py-4">
+                              {item.status || "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </main>
-
     </div>
   );
 }
 
-function StatCard({ title, value, icon }) {
+function StatCard({ title, value }) {
   return (
-    <div style={styles.statCard}>
-      <div>
-        <p style={styles.statTitle}>{title}</p>
-        <h2 style={styles.statValue}>{value}</h2>
-      </div>
-
-      <div style={styles.statIcon}>
-        {icon}
-      </div>
+    <div className="rounded-xl bg-white p-5 shadow-sm">
+      <p className="text-sm text-gray-500">{title}</p>
+      <p className="mt-2 text-3xl font-bold text-[#B7792B]">
+        {value}
+      </p>
     </div>
   );
 }
-
-function getIcon(menu) {
-  const icons = {
-    Dashboard: "📊",
-    Employees: "👥",
-    Departments: "🏢",
-    Attendance: "🕒",
-    "Leave Approvals": "📅",
-    Tasks: "📋",
-    Performance: "⭐",
-  };
-
-  return icons[menu] || "•";
-}
-
-const styles = {
-  container: {
-    display: "flex",
-    minHeight: "100vh",
-    background: "#f5f7fb",
-    fontFamily: "Arial, sans-serif",
-  },
-
-  sidebar: {
-    width: "250px",
-    background: "#111827",
-    color: "white",
-    padding: "20px 15px",
-    boxSizing: "border-box",
-    position: "fixed",
-    top: 0,
-    bottom: 0,
-    left: 0,
-    display: "flex",
-    flexDirection: "column",
-  },
-
-  logo: {
-    width: "45px",
-    height: "45px",
-    background: "#2563eb",
-    borderRadius: "10px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontWeight: "bold",
-    fontSize: "18px",
-  },
-
-  logoText: {
-    fontSize: "14px",
-    fontWeight: "bold",
-    marginTop: "8px",
-    marginBottom: "25px",
-  },
-
-  nav: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "5px",
-    flex: 1,
-    overflowY: "auto",
-  },
-
-  menuItem: {
-    padding: "12px",
-    borderRadius: "7px",
-    display: "flex",
-    gap: "12px",
-    alignItems: "center",
-    cursor: "pointer",
-    fontSize: "14px",
-  },
-
-  activeMenu: {
-    background: "#2563eb",
-  },
-
-  logout: {
-    marginTop: "10px",
-    padding: "12px",
-    background: "#dc2626",
-    color: "white",
-    border: "none",
-    borderRadius: "7px",
-    cursor: "pointer",
-    fontWeight: "bold",
-    flexShrink: 0,
-  },
-
-  main: {
-    marginLeft: "250px",
-    width: "calc(100% - 250px)",
-  },
-
-  navbar: {
-    height: "75px",
-    background: "white",
-    borderBottom: "1px solid #e5e7eb",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "0 30px",
-  },
-
-  pageTitle: {
-    margin: 0,
-    fontSize: "20px",
-  },
-
-  welcome: {
-    margin: "4px 0 0",
-    color: "#6b7280",
-    fontSize: "12px",
-  },
-
-  profile: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-  },
-
-  avatar: {
-    width: "40px",
-    height: "40px",
-    borderRadius: "50%",
-    background: "#2563eb",
-    color: "white",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontWeight: "bold",
-  },
-
-  role: {
-    fontSize: "11px",
-    color: "#6b7280",
-  },
-
-  content: {
-    padding: "30px",
-  },
-
-  heading: {
-    margin: 0,
-    fontSize: "27px",
-  },
-
-  description: {
-    color: "#6b7280",
-    marginBottom: "25px",
-  },
-
-  cardGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: "18px",
-  },
-
-  statCard: {
-    background: "white",
-    padding: "20px",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  statTitle: {
-    margin: 0,
-    color: "#6b7280",
-    fontSize: "13px",
-  },
-
-  statValue: {
-    margin: "7px 0 0",
-    fontSize: "27px",
-  },
-
-  statIcon: {
-    width: "45px",
-    height: "45px",
-    borderRadius: "10px",
-    background: "#eff6ff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "22px",
-  },
-
-  section: {
-    marginTop: "30px",
-    background: "white",
-    padding: "25px",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-  },
-
-  sectionTitle: {
-    marginTop: 0,
-  },
-
-  quickGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: "12px",
-  },
-
-  quickButton: {
-    padding: "14px",
-    background: "#f9fafb",
-    border: "1px solid #e5e7eb",
-    borderRadius: "7px",
-    cursor: "pointer",
-  },
-};
 
 export default Dashboard;

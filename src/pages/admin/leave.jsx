@@ -1,742 +1,203 @@
 import { useEffect, useState } from "react";
+import Sidebar from "../../components/sidebar";
+import Navbar from "../../components/navbar";
+
+import {
+  getLeaves,
+  approveLeave,
+  rejectLeave,
+} from "../../api/api";
 
 function Leave() {
   const [leaves, setLeaves] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const [formData, setFormData] = useState({
-    employee: "",
-    type: "Casual Leave",
-    fromDate: "",
-    toDate: "",
-    reason: "",
-  });
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
-  // Load data
+  const loadLeaves = async () => {
+    try {
+      setLoading(true);
+
+      const response = await getLeaves();
+
+      const data = Array.isArray(response)
+        ? response
+        : response?.leaves ||
+          response?.data ||
+          [];
+
+      setLeaves(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const savedLeaves =
-      JSON.parse(localStorage.getItem("emsLeaves")) || [];
-
-    const savedEmployees =
-      JSON.parse(localStorage.getItem("emsEmployees")) || [];
-
-    setLeaves(savedLeaves);
-    setEmployees(savedEmployees);
+    loadLeaves();
   }, []);
 
-  // Save leaves
-  const saveLeaves = (data) => {
-    setLeaves(data);
+  const handleApprove = async (id) => {
+    try {
+      await approveLeave(id);
 
-    localStorage.setItem(
-      "emsLeaves",
-      JSON.stringify(data)
-    );
-  };
+      setMessage("Leave approved successfully.");
 
-  // Form changes
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-  };
-
-  // Add leave
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    if (
-      !formData.employee ||
-      !formData.fromDate ||
-      !formData.toDate ||
-      !formData.reason
-    ) {
-      alert("Please fill all fields.");
-      return;
+      await loadLeaves();
+    } catch (err) {
+      setError(err.message);
     }
-
-    const newLeave = {
-      id: Date.now(),
-      ...formData,
-      status: "Pending",
-    };
-
-    saveLeaves([
-      ...leaves,
-      newLeave,
-    ]);
-
-    setFormData({
-      employee: "",
-      type: "Casual Leave",
-      fromDate: "",
-      toDate: "",
-      reason: "",
-    });
-
-    setShowForm(false);
   };
 
-  // Change status
-  const updateStatus = (id, status) => {
-    const updatedLeaves = leaves.map(
-      (leave) =>
-        leave.id === id
-          ? { ...leave, status }
-          : leave
-    );
+  const handleReject = async (id) => {
+    try {
+      await rejectLeave(id);
 
-    saveLeaves(updatedLeaves);
+      setMessage("Leave rejected successfully.");
+
+      await loadLeaves();
+    } catch (err) {
+      setError(err.message);
+    }
   };
-
-  // Search
-  const filteredLeaves = leaves.filter((leave) => {
-    const text = search.toLowerCase();
-
-    return (
-      leave.employee
-        .toLowerCase()
-        .includes(text) ||
-      leave.type
-        .toLowerCase()
-        .includes(text) ||
-      leave.status
-        .toLowerCase()
-        .includes(text)
-    );
-  });
-
-  const pending = leaves.filter(
-    (leave) => leave.status === "Pending"
-  ).length;
-
-  const approved = leaves.filter(
-    (leave) => leave.status === "Approved"
-  ).length;
-
-  const rejected = leaves.filter(
-    (leave) => leave.status === "Rejected"
-  ).length;
 
   return (
-    <div style={styles.page}>
+    <div className="min-h-screen bg-gray-100">
+      <Sidebar />
+      <Navbar />
 
-      {/* HEADER */}
+      <main className="ml-64 pt-20">
+        <div className="p-8">
 
-      <div style={styles.header}>
-
-        <div>
-          <h1 style={styles.title}>
+          <h1 className="text-3xl font-bold text-gray-800">
             Leave Management
           </h1>
 
-          <p style={styles.subtitle}>
+          <p className="mb-8 text-gray-500">
             Review and manage employee leave requests
           </p>
-        </div>
 
-        <button
-          style={styles.addButton}
-          onClick={() => setShowForm(true)}
-        >
-          + Add Leave Request
-        </button>
-
-      </div>
-
-
-      {/* SUMMARY */}
-
-      <div style={styles.summaryGrid}>
-
-        <SummaryCard
-          title="Total Requests"
-          value={leaves.length}
-          icon="📋"
-        />
-
-        <SummaryCard
-          title="Pending"
-          value={pending}
-          icon="⏳"
-        />
-
-        <SummaryCard
-          title="Approved"
-          value={approved}
-          icon="✅"
-        />
-
-        <SummaryCard
-          title="Rejected"
-          value={rejected}
-          icon="❌"
-        />
-
-      </div>
-
-
-      {/* FORM */}
-
-      {showForm && (
-        <div style={styles.formCard}>
-
-          <h2 style={styles.formTitle}>
-            New Leave Request
-          </h2>
-
-          <form onSubmit={handleSubmit}>
-
-            <div style={styles.formGrid}>
-
-              <select
-                name="employee"
-                value={formData.employee}
-                onChange={handleChange}
-                style={styles.input}
-              >
-                <option value="">
-                  Select Employee
-                </option>
-
-                {employees.map((employee) => (
-                  <option
-                    key={employee.id}
-                    value={employee.name}
-                  >
-                    {employee.name}
-                  </option>
-                ))}
-
-              </select>
-
-              <select
-                name="type"
-                value={formData.type}
-                onChange={handleChange}
-                style={styles.input}
-              >
-                <option>
-                  Casual Leave
-                </option>
-
-                <option>
-                  Sick Leave
-                </option>
-
-                <option>
-                  Annual Leave
-                </option>
-
-                <option>
-                  Emergency Leave
-                </option>
-              </select>
-
-              <input
-                type="date"
-                name="fromDate"
-                value={formData.fromDate}
-                onChange={handleChange}
-                style={styles.input}
-              />
-
-              <input
-                type="date"
-                name="toDate"
-                value={formData.toDate}
-                onChange={handleChange}
-                style={styles.input}
-              />
-
-              <textarea
-                name="reason"
-                placeholder="Reason for leave"
-                value={formData.reason}
-                onChange={handleChange}
-                style={styles.textarea}
-              />
-
+          {message && (
+            <div className="mb-4 rounded-xl bg-green-50 p-4 text-green-700">
+              {message}
             </div>
+          )}
 
-            <div style={styles.formButtons}>
-
-              <button
-                type="submit"
-                style={styles.saveButton}
-              >
-                Submit Request
-              </button>
-
-              <button
-                type="button"
-                style={styles.cancelButton}
-                onClick={() => setShowForm(false)}
-              >
-                Cancel
-              </button>
-
+          {error && (
+            <div className="mb-4 rounded-xl bg-red-50 p-4 text-red-600">
+              {error}
             </div>
+          )}
 
-          </form>
+          <div className="rounded-2xl bg-white p-6 shadow-sm">
 
-        </div>
-      )}
+            {loading ? (
+              <p>Loading leaves...</p>
+            ) : (
+              <div className="overflow-x-auto">
 
+                <table className="w-full">
 
-      {/* SEARCH */}
+                  <thead>
+                    <tr className="border-b text-left text-sm text-gray-500">
+                      <th className="p-3">Employee</th>
+                      <th className="p-3">Type</th>
+                      <th className="p-3">Start</th>
+                      <th className="p-3">End</th>
+                      <th className="p-3">Reason</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Actions</th>
+                    </tr>
+                  </thead>
 
-      <div style={styles.searchContainer}>
+                  <tbody>
+                    {leaves.map((leave, index) => {
 
-        <input
-          type="text"
-          placeholder="Search leave requests..."
-          value={search}
-          onChange={(e) =>
-            setSearch(e.target.value)
-          }
-          style={styles.search}
-        />
+                      const id =
+                        leave._id ||
+                        leave.id;
 
-        <span style={styles.count}>
-          {filteredLeaves.length} Requests
-        </span>
+                      const status =
+                        leave.status || "Pending";
 
-      </div>
+                      return (
+                        <tr
+                          key={id || index}
+                          className="border-b hover:bg-orange-50"
+                        >
+                          <td className="p-3">
+                            {leave.employee_id}
+                          </td>
 
+                          <td className="p-3">
+                            {leave.leave_type}
+                          </td>
 
-      {/* TABLE */}
+                          <td className="p-3">
+                            {leave.start_date}
+                          </td>
 
-      <div style={styles.tableCard}>
+                          <td className="p-3">
+                            {leave.end_date}
+                          </td>
 
-        {filteredLeaves.length === 0 ? (
+                          <td className="p-3">
+                            {leave.reason}
+                          </td>
 
-          <div style={styles.empty}>
+                          <td className="p-3">
+                            <span className="rounded-full bg-orange-100 px-3 py-1 text-xs text-orange-700">
+                              {status}
+                            </span>
+                          </td>
 
-            <div style={styles.emptyIcon}>
-              📅
-            </div>
+                          <td className="p-3">
 
-            <h3>
-              No leave requests
-            </h3>
+                            {String(status).toLowerCase() ===
+                              "pending" && (
+                              <div className="flex gap-2">
 
-            <p>
-              Add a leave request to see it here.
-            </p>
+                                <button
+                                  onClick={() =>
+                                    handleApprove(id)
+                                  }
+                                  className="rounded-lg bg-green-100 px-3 py-2 text-green-700"
+                                >
+                                  Approve
+                                </button>
+
+                                <button
+                                  onClick={() =>
+                                    handleReject(id)
+                                  }
+                                  className="rounded-lg bg-red-100 px-3 py-2 text-red-600"
+                                >
+                                  Reject
+                                </button>
+
+                              </div>
+                            )}
+
+                          </td>
+
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+
+                </table>
+
+              </div>
+            )}
 
           </div>
 
-        ) : (
-
-          <div style={styles.tableWrapper}>
-
-            <table style={styles.table}>
-
-              <thead>
-
-                <tr>
-
-                  <th style={styles.th}>
-                    Employee
-                  </th>
-
-                  <th style={styles.th}>
-                    Leave Type
-                  </th>
-
-                  <th style={styles.th}>
-                    From
-                  </th>
-
-                  <th style={styles.th}>
-                    To
-                  </th>
-
-                  <th style={styles.th}>
-                    Reason
-                  </th>
-
-                  <th style={styles.th}>
-                    Status
-                  </th>
-
-                  <th style={styles.th}>
-                    Action
-                  </th>
-
-                </tr>
-
-              </thead>
-
-              <tbody>
-
-                {filteredLeaves.map((leave) => (
-
-                  <tr key={leave.id}>
-
-                    <td style={styles.td}>
-                      <strong>
-                        {leave.employee}
-                      </strong>
-                    </td>
-
-                    <td style={styles.td}>
-                      {leave.type}
-                    </td>
-
-                    <td style={styles.td}>
-                      {leave.fromDate}
-                    </td>
-
-                    <td style={styles.td}>
-                      {leave.toDate}
-                    </td>
-
-                    <td style={styles.td}>
-                      {leave.reason}
-                    </td>
-
-                    <td style={styles.td}>
-
-                      <span
-                        style={{
-                          ...styles.status,
-                          background:
-                            leave.status === "Approved"
-                              ? "#dcfce7"
-                              : leave.status === "Rejected"
-                              ? "#fee2e2"
-                              : "#fef3c7",
-                          color:
-                            leave.status === "Approved"
-                              ? "#166534"
-                              : leave.status === "Rejected"
-                              ? "#991b1b"
-                              : "#92400e",
-                        }}
-                      >
-                        {leave.status}
-                      </span>
-
-                    </td>
-
-                    <td style={styles.td}>
-
-                      {leave.status === "Pending" && (
-                        <>
-                          <button
-                            style={styles.approveButton}
-                            onClick={() =>
-                              updateStatus(
-                                leave.id,
-                                "Approved"
-                              )
-                            }
-                          >
-                            Approve
-                          </button>
-
-                          <button
-                            style={styles.rejectButton}
-                            onClick={() =>
-                              updateStatus(
-                                leave.id,
-                                "Rejected"
-                              )
-                            }
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
-
-                    </td>
-
-                  </tr>
-
-                ))}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        )}
-
-      </div>
-
+        </div>
+      </main>
     </div>
   );
 }
-
-
-function SummaryCard({
-  title,
-  value,
-  icon,
-}) {
-  return (
-    <div style={styles.summaryCard}>
-
-      <div>
-        <p style={styles.summaryTitle}>
-          {title}
-        </p>
-
-        <h2 style={styles.summaryValue}>
-          {value}
-        </h2>
-      </div>
-
-      <div style={styles.summaryIcon}>
-        {icon}
-      </div>
-
-    </div>
-  );
-}
-
-
-const styles = {
-
-  page: {
-    padding: "30px",
-    background: "#f5f7fb",
-    minHeight: "calc(100vh - 80px)",
-  },
-
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "25px",
-  },
-
-  title: {
-    margin: 0,
-    fontSize: "26px",
-    color: "#111827",
-  },
-
-  subtitle: {
-    margin: "5px 0 0",
-    color: "#6b7280",
-    fontSize: "14px",
-  },
-
-  addButton: {
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    padding: "12px 18px",
-    borderRadius: "7px",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-
-  summaryGrid: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(4, 1fr)",
-    gap: "18px",
-    marginBottom: "25px",
-  },
-
-  summaryCard: {
-    background: "white",
-    padding: "20px",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  summaryTitle: {
-    margin: 0,
-    color: "#6b7280",
-    fontSize: "13px",
-  },
-
-  summaryValue: {
-    margin: "7px 0 0",
-    fontSize: "26px",
-    color: "#111827",
-  },
-
-  summaryIcon: {
-    width: "45px",
-    height: "45px",
-    borderRadius: "10px",
-    background: "#eff6ff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "23px",
-  },
-
-  formCard: {
-    background: "white",
-    padding: "25px",
-    borderRadius: "10px",
-    marginBottom: "20px",
-    border: "1px solid #e5e7eb",
-  },
-
-  formTitle: {
-    marginTop: 0,
-    marginBottom: "20px",
-  },
-
-  formGrid: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(2, 1fr)",
-    gap: "15px",
-  },
-
-  input: {
-    width: "100%",
-    boxSizing: "border-box",
-    padding: "12px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-    fontSize: "14px",
-  },
-
-  textarea: {
-    gridColumn: "1 / -1",
-    minHeight: "90px",
-    padding: "12px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-    fontSize: "14px",
-    resize: "vertical",
-    fontFamily: "Arial",
-  },
-
-  formButtons: {
-    display: "flex",
-    gap: "10px",
-    marginTop: "20px",
-  },
-
-  saveButton: {
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    padding: "11px 18px",
-    borderRadius: "7px",
-    cursor: "pointer",
-  },
-
-  cancelButton: {
-    background: "#e5e7eb",
-    color: "#374151",
-    border: "none",
-    padding: "11px 18px",
-    borderRadius: "7px",
-    cursor: "pointer",
-  },
-
-  searchContainer: {
-    background: "white",
-    padding: "18px",
-    borderRadius: "10px",
-    marginBottom: "20px",
-    border: "1px solid #e5e7eb",
-    display: "flex",
-    gap: "15px",
-    alignItems: "center",
-  },
-
-  search: {
-    flex: 1,
-    padding: "11px 14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-    fontSize: "14px",
-  },
-
-  count: {
-    color: "#6b7280",
-    fontSize: "13px",
-  },
-
-  tableCard: {
-    background: "white",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-    overflow: "hidden",
-  },
-
-  tableWrapper: {
-    overflowX: "auto",
-  },
-
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-
-  th: {
-    textAlign: "left",
-    padding: "15px",
-    background: "#f9fafb",
-    color: "#374151",
-    fontSize: "13px",
-    borderBottom: "1px solid #e5e7eb",
-  },
-
-  td: {
-    padding: "15px",
-    borderBottom: "1px solid #f1f5f9",
-    color: "#4b5563",
-    fontSize: "13px",
-  },
-
-  status: {
-    padding: "5px 9px",
-    borderRadius: "20px",
-    fontSize: "11px",
-    fontWeight: "bold",
-  },
-
-  approveButton: {
-    background: "#dcfce7",
-    color: "#166534",
-    border: "none",
-    padding: "7px 9px",
-    borderRadius: "5px",
-    cursor: "pointer",
-    marginRight: "5px",
-  },
-
-  rejectButton: {
-    background: "#fee2e2",
-    color: "#991b1b",
-    border: "none",
-    padding: "7px 9px",
-    borderRadius: "5px",
-    cursor: "pointer",
-  },
-
-  empty: {
-    textAlign: "center",
-    padding: "70px 20px",
-    color: "#6b7280",
-  },
-
-  emptyIcon: {
-    fontSize: "45px",
-  },
-};
 
 export default Leave;

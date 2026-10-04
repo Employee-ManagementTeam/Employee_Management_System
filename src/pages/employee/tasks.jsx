@@ -1,211 +1,199 @@
 import { useEffect, useState } from "react";
+import EmployeeSidebar from "../../components/EmployeeSidebar";
+import Navbar from "../../components/navbar";
+import { getTasks, updateTask } from "../../api/api";
 
 function Tasks() {
   const [tasks, setTasks] = useState([]);
+  const [employeeId, setEmployeeId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadTasks();
   }, []);
 
-  const getEmployeeName = () => {
-    const email = localStorage.getItem("email");
+  const loadTasks = async () => {
+    try {
+      setLoading(true);
 
-    const employees =
-      JSON.parse(localStorage.getItem("emsEmployees")) || [];
+      const response = await getTasks();
 
-    const employee = employees.find(
-      (item) => item.email === email
-    );
+      const taskList =
+        Array.isArray(response)
+          ? response
+          : response.tasks || response.data || [];
 
-    return (
-      employee?.name ||
-      localStorage.getItem("username") ||
-      "Employee"
-    );
+      const userId = localStorage.getItem("userId");
+
+      const employeesResponse = await fetch(
+        "http://127.0.0.1:5000/api/employees",
+        {
+          headers: {
+            "X-User-ID": userId,
+          },
+        }
+      );
+
+      const employeesData = await employeesResponse.json();
+
+      const employees = Array.isArray(employeesData)
+        ? employeesData
+        : employeesData.employees || employeesData.data || [];
+
+      const currentEmployee = employees.find(
+        (employee) =>
+          String(employee.user_id) === String(userId) ||
+          String(employee.userId) === String(userId)
+      );
+
+      const id =
+        currentEmployee?.id ||
+        currentEmployee?.employee_id ||
+        currentEmployee?._id;
+
+      setEmployeeId(id);
+
+      const myTasks = taskList.filter(
+        (task) =>
+          String(task.employee_id) === String(id) ||
+          String(task.assigned_to) === String(id) ||
+          String(task.user_id) === String(userId)
+      );
+
+      setTasks(myTasks);
+    } catch (err) {
+      setError(err.message || "Failed to load tasks.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const loadTasks = () => {
-    const saved =
-      JSON.parse(localStorage.getItem("emsTasks")) || [];
+  const handleStatusChange = async (task, status) => {
+    try {
+      setUpdating(task.id || task.task_id || task._id);
 
-    setTasks(
-      saved.filter(
-        (task) => task.employee === getEmployeeName()
-      )
-    );
+      const taskId =
+        task.id ||
+        task.task_id ||
+        task._id;
+
+      await updateTask(taskId, {
+        ...task,
+        status,
+      });
+
+      await loadTasks();
+    } catch (err) {
+      setError(err.message || "Failed to update task.");
+    } finally {
+      setUpdating(null);
+    }
   };
-
-  const updateStatus = (id, status) => {
-    const allTasks =
-      JSON.parse(localStorage.getItem("emsTasks")) || [];
-
-    const updated = allTasks.map((task) =>
-      task.id === id
-        ? { ...task, status }
-        : task
-    );
-
-    localStorage.setItem(
-      "emsTasks",
-      JSON.stringify(updated)
-    );
-
-    loadTasks();
-  };
-
-  const pending = tasks.filter(
-    (task) => task.status === "Pending"
-  ).length;
-
-  const progress = tasks.filter(
-    (task) => task.status === "In Progress"
-  ).length;
-
-  const completed = tasks.filter(
-    (task) => task.status === "Completed"
-  ).length;
 
   return (
-    <div style={styles.page}>
+    <div className="min-h-screen bg-gray-100">
+      <EmployeeSidebar />
+      <Navbar />
 
-      <h1>My Tasks</h1>
+      <main className="ml-64 pt-20">
+        <div className="p-6">
 
-      <p style={styles.subtitle}>
-        View and update your assigned tasks
-      </p>
+          <h1 className="text-3xl font-bold text-gray-800">
+            My Tasks
+          </h1>
 
-      <div style={styles.cards}>
+          <p className="mt-1 text-gray-500">
+            Tasks assigned to you.
+          </p>
 
-        <Stat title="Total" value={tasks.length} />
-        <Stat title="Pending" value={pending} />
-        <Stat title="In Progress" value={progress} />
-        <Stat title="Completed" value={completed} />
+          {error && (
+            <div className="mt-5 rounded-xl bg-red-50 p-4 text-red-700">
+              {error}
+            </div>
+          )}
 
-      </div>
-
-      <div style={styles.grid}>
-
-        {tasks.map((task) => (
-
-          <div
-            key={task.id}
-            style={styles.card}
-          >
-
-            <h2>{task.title}</h2>
-
-            <p>
-              <strong>Description:</strong>{" "}
-              {task.description}
+          {loading ? (
+            <p className="mt-6 text-gray-500">
+              Loading tasks...
             </p>
+          ) : tasks.length === 0 ? (
+            <div className="mt-6 rounded-2xl bg-white p-8 text-center shadow-sm">
+              <p className="text-gray-500">
+                No tasks found.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
+              {tasks.map((task) => {
+                const taskId =
+                  task.id ||
+                  task.task_id ||
+                  task._id;
 
-            <p>
-              <strong>Priority:</strong>{" "}
-              {task.priority}
-            </p>
+                return (
+                  <div
+                    key={taskId}
+                    className="rounded-2xl bg-white p-6 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-800">
+                          {task.title || task.name}
+                        </h2>
 
-            <p>
-              <strong>Due Date:</strong>{" "}
-              {task.dueDate}
-            </p>
+                        <p className="mt-2 text-gray-500">
+                          {task.description ||
+                            "No description provided."}
+                        </p>
+                      </div>
 
-            <label>
-              <strong>Status</strong>
-            </label>
+                      <span className="rounded-full bg-orange-50 px-3 py-1 text-sm font-semibold text-orange-600">
+                        {task.status || "Not specified"}
+                      </span>
+                    </div>
 
-            <select
-              value={task.status}
-              onChange={(e) =>
-                updateStatus(
-                  task.id,
-                  e.target.value
-                )
-              }
-              style={styles.select}
-            >
-              <option>Pending</option>
-              <option>In Progress</option>
-              <option>Completed</option>
-            </select>
+                    <div className="mt-5">
+                      <label className="mb-2 block text-sm font-medium text-gray-600">
+                        Update Status
+                      </label>
 
-          </div>
+                      <select
+                        value={task.status || ""}
+                        disabled={updating === taskId}
+                        onChange={(e) =>
+                          handleStatusChange(
+                            task,
+                            e.target.value
+                          )
+                        }
+                        className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-orange-500"
+                      >
+                        <option value="">
+                          Select status
+                        </option>
+                        <option value="Pending">
+                          Pending
+                        </option>
+                        <option value="In Progress">
+                          In Progress
+                        </option>
+                        <option value="Completed">
+                          Completed
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
-        ))}
-
-      </div>
-
-      {tasks.length === 0 && (
-        <div style={styles.empty}>
-          No tasks assigned to you.
         </div>
-      )}
-
+      </main>
     </div>
   );
 }
-
-function Stat({ title, value }) {
-  return (
-    <div style={styles.stat}>
-      <p>{title}</p>
-      <h2>{value}</h2>
-    </div>
-  );
-}
-
-const styles = {
-  page: {
-    padding: "30px",
-    minHeight: "100vh",
-    background: "#f5f7fb",
-    fontFamily: "Arial, sans-serif",
-  },
-
-  subtitle: {
-    color: "#6b7280",
-  },
-
-  cards: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: "15px",
-    margin: "25px 0",
-  },
-
-  stat: {
-    background: "white",
-    padding: "18px",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-  },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: "18px",
-  },
-
-  card: {
-    background: "white",
-    padding: "20px",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-  },
-
-  select: {
-    width: "100%",
-    padding: "10px",
-    marginTop: "8px",
-    border: "1px solid #d1d5db",
-    borderRadius: "6px",
-  },
-
-  empty: {
-    background: "white",
-    padding: "25px",
-    borderRadius: "10px",
-    color: "#6b7280",
-  },
-};
 
 export default Tasks;

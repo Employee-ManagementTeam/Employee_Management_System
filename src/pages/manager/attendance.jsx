@@ -1,246 +1,153 @@
 import { useEffect, useState } from "react";
+import ManagerSidebar from "../../components/ManagerSidebar";
+import Navbar from "../../components/navbar";
+
+import {
+  getAttendance,
+  getEmployees,
+} from "../../api/api";
 
 function Attendance() {
+  const [attendance, setAttendance] = useState([]);
   const [employees, setEmployees] = useState([]);
-  const [search, setSearch] = useState("");
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    loadEmployees();
+    loadAttendance();
   }, []);
 
-  const loadEmployees = () => {
-    setEmployees(
-      JSON.parse(localStorage.getItem("emsEmployees")) || []
-    );
+  const loadAttendance = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const [attendanceResponse, employeesResponse] =
+        await Promise.all([
+          getAttendance(),
+          getEmployees(),
+        ]);
+
+      setAttendance(
+        attendanceResponse?.attendance ||
+          attendanceResponse?.data ||
+          (Array.isArray(attendanceResponse)
+            ? attendanceResponse
+            : [])
+      );
+
+      setEmployees(
+        employeesResponse?.employees ||
+          employeesResponse?.data ||
+          (Array.isArray(employeesResponse)
+            ? employeesResponse
+            : [])
+      );
+    } catch (err) {
+      setError(err.message || "Failed to load attendance.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const markAttendance = (id, status) => {
-    const updated = employees.map((employee) =>
-      employee.id === id
-        ? { ...employee, attendance: status }
-        : employee
+  const getEmployeeName = (employeeId) => {
+    const employee = employees.find(
+      (item) =>
+        String(item.id || item._id) ===
+        String(employeeId)
     );
 
-    setEmployees(updated);
-    localStorage.setItem(
-      "emsEmployees",
-      JSON.stringify(updated)
-    );
+    if (!employee) return employeeId || "-";
+
+    return `${employee.first_name || ""} ${
+      employee.last_name || ""
+    }`.trim();
   };
-
-  const filtered = employees.filter((employee) =>
-    `${employee.name} ${employee.department}`
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  );
-
-  const present = employees.filter(
-    (employee) => employee.attendance === "Present"
-  ).length;
-
-  const absent = employees.filter(
-    (employee) => employee.attendance === "Absent"
-  ).length;
-
-  const leave = employees.filter(
-    (employee) => employee.attendance === "Leave"
-  ).length;
 
   return (
-    <div style={styles.page}>
+    <div className="min-h-screen bg-gray-50">
+      <ManagerSidebar />
+      <Navbar />
 
-      <h1>Attendance</h1>
-      <p style={styles.subtitle}>
-        Monitor team attendance
-      </p>
+      <main className="ml-64 pt-20">
+        <div className="p-6">
+          <h1 className="text-3xl font-bold text-gray-800">
+            Attendance
+          </h1>
 
-      <div style={styles.cards}>
+          <p className="mt-1 text-gray-500">
+            View employee attendance records.
+          </p>
 
-        <Stat title="Total" value={employees.length} />
-        <Stat title="Present" value={present} />
-        <Stat title="Absent" value={absent} />
-        <Stat title="Leave" value={leave} />
+          {error && (
+            <div className="mt-5 rounded-lg bg-red-50 p-4 text-red-600">
+              {error}
+            </div>
+          )}
 
-      </div>
+          <div className="mt-6 overflow-x-auto rounded-xl bg-white shadow-sm">
+            {loading ? (
+              <div className="p-8 text-center text-gray-500">
+                Loading attendance...
+              </div>
+            ) : attendance.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                No attendance records found.
+              </div>
+            ) : (
+              <table className="w-full text-left">
+                <thead className="bg-gray-50 text-sm text-gray-500">
+                  <tr>
+                    <th className="px-5 py-3">Employee</th>
+                    <th className="px-5 py-3">Date</th>
+                    <th className="px-5 py-3">Check In</th>
+                    <th className="px-5 py-3">Check Out</th>
+                    <th className="px-5 py-3">Status</th>
+                  </tr>
+                </thead>
 
-      <input
-        placeholder="Search employees..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        style={styles.search}
-      />
+                <tbody>
+                  {attendance.map((item, index) => (
+                    <tr
+                      key={item.id || item._id || index}
+                      className="border-t border-gray-100"
+                    >
+                      <td className="px-5 py-4">
+                        {getEmployeeName(
+                          item.employee_id
+                        )}
+                      </td>
 
-      <div style={styles.tableCard}>
+                      <td className="px-5 py-4">
+                        {item.date || "-"}
+                      </td>
 
-        <table style={styles.table}>
+                      <td className="px-5 py-4">
+                        {item.check_in ||
+                          item.check_in_time ||
+                          "-"}
+                      </td>
 
-          <thead>
-            <tr>
-              <th style={styles.th}>Employee</th>
-              <th style={styles.th}>Department</th>
-              <th style={styles.th}>Status</th>
-              <th style={styles.th}>Action</th>
-            </tr>
-          </thead>
+                      <td className="px-5 py-4">
+                        {item.check_out ||
+                          item.check_out_time ||
+                          "-"}
+                      </td>
 
-          <tbody>
-
-            {filtered.map((employee) => (
-
-              <tr key={employee.id}>
-
-                <td style={styles.td}>
-                  {employee.name}
-                </td>
-
-                <td style={styles.td}>
-                  {employee.department}
-                </td>
-
-                <td style={styles.td}>
-                  {employee.attendance || "Not Marked"}
-                </td>
-
-                <td style={styles.td}>
-
-                  <button
-                    onClick={() =>
-                      markAttendance(employee.id, "Present")
-                    }
-                    style={styles.present}
-                  >
-                    Present
-                  </button>
-
-                  <button
-                    onClick={() =>
-                      markAttendance(employee.id, "Absent")
-                    }
-                    style={styles.absent}
-                  >
-                    Absent
-                  </button>
-
-                  <button
-                    onClick={() =>
-                      markAttendance(employee.id, "Leave")
-                    }
-                    style={styles.leave}
-                  >
-                    Leave
-                  </button>
-
-                </td>
-
-              </tr>
-
-            ))}
-
-          </tbody>
-
-        </table>
-
-      </div>
-
+                      <td className="px-5 py-4">
+                        {item.status || "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
-
-function Stat({ title, value }) {
-  return (
-    <div style={styles.stat}>
-      <p>{title}</p>
-      <h2>{value}</h2>
-    </div>
-  );
-}
-
-const styles = {
-  page: {
-    padding: "30px",
-    minHeight: "100vh",
-    background: "#f5f7fb",
-    fontFamily: "Arial, sans-serif",
-  },
-
-  subtitle: {
-    color: "#6b7280",
-  },
-
-  cards: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: "15px",
-    margin: "25px 0",
-  },
-
-  stat: {
-    background: "white",
-    padding: "18px",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-  },
-
-  search: {
-    width: "100%",
-    maxWidth: "400px",
-    padding: "12px",
-    marginBottom: "20px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-  },
-
-  tableCard: {
-    background: "white",
-    borderRadius: "10px",
-    overflow: "auto",
-    border: "1px solid #e5e7eb",
-  },
-
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-
-  th: {
-    padding: "14px",
-    textAlign: "left",
-    background: "#f9fafb",
-  },
-
-  td: {
-    padding: "14px",
-    borderTop: "1px solid #e5e7eb",
-  },
-
-  present: {
-    marginRight: "5px",
-    padding: "7px",
-    background: "#16a34a",
-    color: "white",
-    border: "none",
-    borderRadius: "5px",
-    cursor: "pointer",
-  },
-
-  absent: {
-    marginRight: "5px",
-    padding: "7px",
-    background: "#dc2626",
-    color: "white",
-    border: "none",
-    borderRadius: "5px",
-    cursor: "pointer",
-  },
-
-  leave: {
-    padding: "7px",
-    background: "#f59e0b",
-    color: "white",
-    border: "none",
-    borderRadius: "5px",
-    cursor: "pointer",
-  },
-};
 
 export default Attendance;

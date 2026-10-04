@@ -1,627 +1,383 @@
 import { useEffect, useState } from "react";
+import Sidebar from "../../components/sidebar";
+import Navbar from "../../components/navbar";
+
+import {
+  getEmployees,
+  createEmployee,
+  updateEmployee,
+  deleteEmployee,
+} from "../../api/api";
+
+const emptyForm = {
+  employee_code: "",
+  first_name: "",
+  last_name: "",
+  phone: "",
+  department: "",
+  designation: "",
+  joining_date: "",
+  address: "",
+  employment_status: "Active",
+  user_id: "",
+};
 
 function Employees() {
   const [employees, setEmployees] = useState([]);
+  const [form, setForm] = useState(emptyForm);
+  const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState("");
 
-  const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
-  const [formData, setFormData] = useState({
-    id: null,
-    name: "",
-    email: "",
-    department: "",
-    designation: "",
-    attendance: "Present",
-  });
+  const toArray = (response) => {
+    if (Array.isArray(response)) return response;
 
-  // Load employees from localStorage
-  useEffect(() => {
-    const savedEmployees =
-      JSON.parse(localStorage.getItem("emsEmployees")) || [];
-
-    setEmployees(savedEmployees);
-  }, []);
-
-  // Save employees to localStorage
-  const saveEmployees = (updatedEmployees) => {
-    setEmployees(updatedEmployees);
-    localStorage.setItem(
-      "emsEmployees",
-      JSON.stringify(updatedEmployees)
+    return (
+      response?.employees ||
+      response?.data ||
+      []
     );
   };
 
-  // Handle input changes
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const loadEmployees = async () => {
+    try {
+      setLoading(true);
 
-    setFormData({
-      ...formData,
-      [name]: value,
+      const response = await getEmployees();
+
+      setEmployees(toArray(response));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadEmployees();
+  }, []);
+
+  const handleChange = (e) => {
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
     });
   };
 
-  // Add or update employee
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (
-      !formData.name ||
-      !formData.email ||
-      !formData.department ||
-      !formData.designation
-    ) {
-      alert("Please fill all fields.");
+    try {
+      setError("");
+      setMessage("");
+
+      if (editingId) {
+        await updateEmployee(editingId, {
+          phone: form.phone,
+          designation: form.designation,
+          address: form.address,
+        });
+
+        setMessage("Employee updated successfully.");
+      } else {
+        await createEmployee(form);
+
+        setMessage("Employee created successfully.");
+      }
+
+      setForm(emptyForm);
+      setEditingId(null);
+
+      await loadEmployees();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleEdit = (employee) => {
+    setEditingId(employee._id || employee.id);
+
+    setForm({
+      employee_code: employee.employee_code || "",
+      first_name: employee.first_name || "",
+      last_name: employee.last_name || "",
+      phone: employee.phone || "",
+      department: employee.department || "",
+      designation: employee.designation || "",
+      joining_date: employee.joining_date || "",
+      address: employee.address || "",
+      employment_status:
+        employee.employment_status || "Active",
+      user_id: employee.user_id || "",
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this employee?")) {
       return;
     }
 
-    if (formData.id) {
-      // UPDATE
-      const updatedEmployees = employees.map((employee) =>
-        employee.id === formData.id
-          ? formData
-          : employee
-      );
+    try {
+      await deleteEmployee(id);
 
-      saveEmployees(updatedEmployees);
-    } else {
-      // ADD
-      const newEmployee = {
-        ...formData,
-        id: Date.now(),
-      };
+      setMessage("Employee deleted successfully.");
 
-      saveEmployees([
-        ...employees,
-        newEmployee,
-      ]);
+      await loadEmployees();
+    } catch (err) {
+      setError(err.message);
     }
-
-    resetForm();
   };
 
-  // Edit employee
-  const handleEdit = (employee) => {
-    setFormData(employee);
-    setShowForm(true);
-  };
-
-  // Delete employee
-  const handleDelete = (id) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this employee?"
-    );
-
-    if (!confirmDelete) return;
-
-    const updatedEmployees = employees.filter(
-      (employee) => employee.id !== id
-    );
-
-    saveEmployees(updatedEmployees);
-  };
-
-  // Reset form
-  const resetForm = () => {
-    setFormData({
-      id: null,
-      name: "",
-      email: "",
-      department: "",
-      designation: "",
-      attendance: "Present",
-    });
-
-    setShowForm(false);
-  };
-
-  // Search
   const filteredEmployees = employees.filter((employee) => {
-    const text = search.toLowerCase();
+    const value = `${employee.first_name || ""} ${
+      employee.last_name || ""
+    } ${employee.employee_code || ""} ${
+      employee.department || ""
+    }`.toLowerCase();
 
-    return (
-      employee.name.toLowerCase().includes(text) ||
-      employee.email.toLowerCase().includes(text) ||
-      employee.department.toLowerCase().includes(text) ||
-      employee.designation.toLowerCase().includes(text)
-    );
+    return value.includes(search.toLowerCase());
   });
 
   return (
-    <div style={styles.page}>
+    <div className="min-h-screen bg-gray-100">
+      <Sidebar />
+      <Navbar />
 
-      {/* HEADER */}
+      <main className="ml-64 pt-20">
+        <div className="p-8">
 
-      <div style={styles.header}>
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-800">
+              Employees
+            </h1>
 
-        <div>
-          <h1 style={styles.title}>
-            Employees
-          </h1>
-
-          <p style={styles.subtitle}>
-            Manage employee information
-          </p>
-        </div>
-
-        <button
-          style={styles.addButton}
-          onClick={() => {
-            resetForm();
-            setShowForm(true);
-          }}
-        >
-          + Add Employee
-        </button>
-
-      </div>
-
-
-      {/* SEARCH */}
-
-      <div style={styles.searchContainer}>
-
-        <input
-          type="text"
-          placeholder="Search employees..."
-          value={search}
-          onChange={(e) =>
-            setSearch(e.target.value)
-          }
-          style={styles.search}
-        />
-
-        <span style={styles.employeeCount}>
-          {filteredEmployees.length} Employees
-        </span>
-
-      </div>
-
-
-      {/* FORM */}
-
-      {showForm && (
-        <div style={styles.formCard}>
-
-          <h2 style={styles.formTitle}>
-            {formData.id
-              ? "Edit Employee"
-              : "Add Employee"}
-          </h2>
-
-          <form onSubmit={handleSubmit}>
-
-            <div style={styles.formGrid}>
-
-              <input
-                type="text"
-                name="name"
-                placeholder="Employee Name"
-                value={formData.name}
-                onChange={handleChange}
-                style={styles.input}
-              />
-
-              <input
-                type="email"
-                name="email"
-                placeholder="Email"
-                value={formData.email}
-                onChange={handleChange}
-                style={styles.input}
-              />
-
-              <input
-                type="text"
-                name="department"
-                placeholder="Department"
-                value={formData.department}
-                onChange={handleChange}
-                style={styles.input}
-              />
-
-              <input
-                type="text"
-                name="designation"
-                placeholder="Designation"
-                value={formData.designation}
-                onChange={handleChange}
-                style={styles.input}
-              />
-
-              <select
-                name="attendance"
-                value={formData.attendance}
-                onChange={handleChange}
-                style={styles.input}
-              >
-                <option value="Present">
-                  Present
-                </option>
-
-                <option value="Absent">
-                  Absent
-                </option>
-
-                <option value="Leave">
-                  Leave
-                </option>
-              </select>
-
-            </div>
-
-            <div style={styles.formButtons}>
-
-              <button
-                type="submit"
-                style={styles.saveButton}
-              >
-                {formData.id
-                  ? "Update Employee"
-                  : "Save Employee"}
-              </button>
-
-              <button
-                type="button"
-                style={styles.cancelButton}
-                onClick={resetForm}
-              >
-                Cancel
-              </button>
-
-            </div>
-
-          </form>
-
-        </div>
-      )}
-
-
-      {/* EMPLOYEE TABLE */}
-
-      <div style={styles.tableCard}>
-
-        {filteredEmployees.length === 0 ? (
-
-          <div style={styles.empty}>
-            <div style={styles.emptyIcon}>
-              👥
-            </div>
-
-            <h3>
-              No employees found
-            </h3>
-
-            <p>
-              Add your first employee using
-              the button above.
+            <p className="text-gray-500">
+              Manage employee records
             </p>
           </div>
 
-        ) : (
+          {message && (
+            <div className="mb-4 rounded-xl bg-green-50 p-4 text-green-700">
+              {message}
+            </div>
+          )}
 
-          <div style={styles.tableWrapper}>
+          {error && (
+            <div className="mb-4 rounded-xl bg-red-50 p-4 text-red-600">
+              {error}
+            </div>
+          )}
 
-            <table style={styles.table}>
+          <form
+            onSubmit={handleSubmit}
+            className="mb-8 rounded-2xl bg-white p-6 shadow-sm"
+          >
+            <h2 className="mb-6 text-xl font-bold text-gray-800">
+              {editingId
+                ? "Edit Employee"
+                : "Add Employee"}
+            </h2>
 
-              <thead>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 
-                <tr>
+              {[
+                ["employee_code", "Employee Code"],
+                ["first_name", "First Name"],
+                ["last_name", "Last Name"],
+                ["phone", "Phone"],
+                ["department", "Department"],
+                ["designation", "Designation"],
+                ["joining_date", "Joining Date"],
+                ["address", "Address"],
+                ["user_id", "User ID"],
+              ].map(([name, label]) => (
+                <div key={name}>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    {label}
+                  </label>
 
-                  <th style={styles.th}>
-                    Name
-                  </th>
+                  <input
+                    type={name === "joining_date" ? "date" : "text"}
+                    name={name}
+                    value={form[name]}
+                    onChange={handleChange}
+                    disabled={
+                      editingId &&
+                      !["phone", "designation", "address"].includes(name)
+                    }
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-100 disabled:bg-gray-100"
+                    required={
+                      !editingId &&
+                      name !== "user_id"
+                    }
+                  />
+                </div>
+              ))}
 
-                  <th style={styles.th}>
-                    Email
-                  </th>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Employment Status
+                </label>
 
-                  <th style={styles.th}>
-                    Department
-                  </th>
+                <select
+                  name="employment_status"
+                  value={form.employment_status}
+                  onChange={handleChange}
+                  disabled={Boolean(editingId)}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-orange-500"
+                >
+                  <option>Active</option>
+                  <option>Inactive</option>
+                </select>
+              </div>
 
-                  <th style={styles.th}>
-                    Designation
-                  </th>
+            </div>
 
-                  <th style={styles.th}>
-                    Attendance
-                  </th>
+            <div className="mt-6 flex gap-3">
 
-                  <th style={styles.th}>
-                    Actions
-                  </th>
+              <button
+                type="submit"
+                className="rounded-xl bg-orange-600 px-6 py-3 font-semibold text-white transition hover:bg-orange-700"
+              >
+                {editingId
+                  ? "Update Employee"
+                  : "Add Employee"}
+              </button>
 
-                </tr>
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingId(null);
+                    setForm(emptyForm);
+                  }}
+                  className="rounded-xl bg-gray-200 px-6 py-3 font-semibold text-gray-700"
+                >
+                  Cancel
+                </button>
+              )}
 
-              </thead>
+            </div>
+          </form>
 
-              <tbody>
+          <div className="rounded-2xl bg-white p-6 shadow-sm">
 
-                {filteredEmployees.map(
-                  (employee) => (
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <h2 className="text-xl font-bold">
+                Employee List
+              </h2>
 
-                    <tr key={employee.id}>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search employees..."
+                className="w-72 rounded-xl border px-4 py-3 outline-none focus:border-orange-500"
+              />
+            </div>
 
-                      <td style={styles.td}>
-                        <strong>
-                          {employee.name}
-                        </strong>
-                      </td>
+            {loading ? (
+              <p>Loading employees...</p>
+            ) : (
+              <div className="overflow-x-auto">
 
-                      <td style={styles.td}>
-                        {employee.email}
-                      </td>
+                <table className="w-full">
 
-                      <td style={styles.td}>
-                        {employee.department}
-                      </td>
-
-                      <td style={styles.td}>
-                        {employee.designation}
-                      </td>
-
-                      <td style={styles.td}>
-
-                        <span
-                          style={{
-                            ...styles.status,
-                            background:
-                              employee.attendance ===
-                              "Present"
-                                ? "#dcfce7"
-                                : employee.attendance ===
-                                  "Absent"
-                                ? "#fee2e2"
-                                : "#fef3c7",
-
-                            color:
-                              employee.attendance ===
-                              "Present"
-                                ? "#166534"
-                                : employee.attendance ===
-                                  "Absent"
-                                ? "#991b1b"
-                                : "#92400e",
-                          }}
-                        >
-                          {employee.attendance}
-                        </span>
-
-                      </td>
-
-                      <td style={styles.td}>
-
-                        <button
-                          style={styles.editButton}
-                          onClick={() =>
-                            handleEdit(employee)
-                          }
-                        >
-                          Edit
-                        </button>
-
-                        <button
-                          style={styles.deleteButton}
-                          onClick={() =>
-                            handleDelete(employee.id)
-                          }
-                        >
-                          Delete
-                        </button>
-
-                      </td>
-
+                  <thead>
+                    <tr className="border-b text-left text-sm text-gray-500">
+                      <th className="p-3">Code</th>
+                      <th className="p-3">Name</th>
+                      <th className="p-3">Department</th>
+                      <th className="p-3">Designation</th>
+                      <th className="p-3">Phone</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Actions</th>
                     </tr>
+                  </thead>
 
-                  )
-                )}
+                  <tbody>
+                    {filteredEmployees.map((employee) => {
 
-              </tbody>
+                      const id =
+                        employee._id ||
+                        employee.id;
 
-            </table>
+                      return (
+                        <tr
+                          key={id}
+                          className="border-b hover:bg-orange-50"
+                        >
+                          <td className="p-3">
+                            {employee.employee_code}
+                          </td>
+
+                          <td className="p-3 font-medium">
+                            {employee.first_name}{" "}
+                            {employee.last_name}
+                          </td>
+
+                          <td className="p-3">
+                            {employee.department}
+                          </td>
+
+                          <td className="p-3">
+                            {employee.designation}
+                          </td>
+
+                          <td className="p-3">
+                            {employee.phone}
+                          </td>
+
+                          <td className="p-3">
+                            {employee.employment_status}
+                          </td>
+
+                          <td className="p-3">
+                            <div className="flex gap-2">
+
+                              <button
+                                onClick={() =>
+                                  handleEdit(employee)
+                                }
+                                className="rounded-lg bg-orange-100 px-3 py-2 text-orange-700"
+                              >
+                                Edit
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  handleDelete(id)
+                                }
+                                className="rounded-lg bg-red-100 px-3 py-2 text-red-600"
+                              >
+                                Delete
+                              </button>
+
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+
+                </table>
+
+              </div>
+            )}
 
           </div>
 
-        )}
-
-      </div>
-
+        </div>
+      </main>
     </div>
   );
 }
-
-
-const styles = {
-
-  page: {
-    padding: "30px",
-    background: "#f5f7fb",
-    minHeight: "calc(100vh - 80px)",
-  },
-
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "25px",
-  },
-
-  title: {
-    margin: 0,
-    fontSize: "26px",
-    color: "#111827",
-  },
-
-  subtitle: {
-    margin: "5px 0 0",
-    color: "#6b7280",
-    fontSize: "14px",
-  },
-
-  addButton: {
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    padding: "12px 18px",
-    borderRadius: "7px",
-    cursor: "pointer",
-    fontSize: "14px",
-    fontWeight: "bold",
-  },
-
-  searchContainer: {
-    background: "white",
-    padding: "18px",
-    borderRadius: "10px",
-    marginBottom: "20px",
-    border: "1px solid #e5e7eb",
-    display: "flex",
-    alignItems: "center",
-    gap: "15px",
-  },
-
-  search: {
-    flex: 1,
-    padding: "11px 14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-    outline: "none",
-    fontSize: "14px",
-  },
-
-  employeeCount: {
-    color: "#6b7280",
-    fontSize: "13px",
-    whiteSpace: "nowrap",
-  },
-
-  formCard: {
-    background: "white",
-    padding: "25px",
-    borderRadius: "10px",
-    marginBottom: "20px",
-    border: "1px solid #e5e7eb",
-  },
-
-  formTitle: {
-    marginTop: 0,
-    marginBottom: "20px",
-    fontSize: "19px",
-  },
-
-  formGrid: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(2, 1fr)",
-    gap: "15px",
-  },
-
-  input: {
-    padding: "12px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-    fontSize: "14px",
-    outline: "none",
-    boxSizing: "border-box",
-    width: "100%",
-  },
-
-  formButtons: {
-    display: "flex",
-    gap: "10px",
-    marginTop: "20px",
-  },
-
-  saveButton: {
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    padding: "11px 18px",
-    borderRadius: "7px",
-    cursor: "pointer",
-  },
-
-  cancelButton: {
-    background: "#e5e7eb",
-    color: "#374151",
-    border: "none",
-    padding: "11px 18px",
-    borderRadius: "7px",
-    cursor: "pointer",
-  },
-
-  tableCard: {
-    background: "white",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-    overflow: "hidden",
-  },
-
-  tableWrapper: {
-    overflowX: "auto",
-  },
-
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-
-  th: {
-    textAlign: "left",
-    padding: "15px",
-    background: "#f9fafb",
-    color: "#374151",
-    fontSize: "13px",
-    borderBottom:
-      "1px solid #e5e7eb",
-  },
-
-  td: {
-    padding: "15px",
-    borderBottom:
-      "1px solid #f1f5f9",
-    color: "#4b5563",
-    fontSize: "13px",
-  },
-
-  status: {
-    padding: "5px 9px",
-    borderRadius: "20px",
-    fontSize: "11px",
-    fontWeight: "bold",
-  },
-
-  editButton: {
-    background: "#eff6ff",
-    color: "#2563eb",
-    border: "none",
-    padding: "7px 10px",
-    borderRadius: "5px",
-    cursor: "pointer",
-    marginRight: "7px",
-  },
-
-  deleteButton: {
-    background: "#fef2f2",
-    color: "#dc2626",
-    border: "none",
-    padding: "7px 10px",
-    borderRadius: "5px",
-    cursor: "pointer",
-  },
-
-  empty: {
-    textAlign: "center",
-    padding: "70px 20px",
-    color: "#6b7280",
-  },
-
-  emptyIcon: {
-    fontSize: "45px",
-    marginBottom: "10px",
-  },
-};
 
 export default Employees;

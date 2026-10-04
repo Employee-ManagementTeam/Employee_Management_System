@@ -1,117 +1,202 @@
 import { useEffect, useState } from "react";
+import EmployeeSidebar from "../../components/EmployeeSidebar";
+import Navbar from "../../components/navbar";
+import { getEmployees, getEmployee } from "../../api/api";
 
 function Profile() {
   const [employee, setEmployee] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadProfile();
   }, []);
 
-  const loadProfile = () => {
-    const email = localStorage.getItem("email");
+  const loadProfile = async () => {
+    try {
+      const userId = localStorage.getItem("userId");
 
-    const employees =
-      JSON.parse(localStorage.getItem("emsEmployees")) || [];
+      const response = await getEmployees();
 
-    const current = employees.find(
-      (item) => item.email === email
-    );
+      const employees =
+        Array.isArray(response)
+          ? response
+          : response.employees ||
+            response.data ||
+            [];
 
-    setEmployee(current || null);
+      const current = employees.find(
+        (item) =>
+          String(item.user_id) === String(userId) ||
+          String(item.userId) === String(userId)
+      );
+
+      if (!current) {
+        throw new Error(
+          "Employee profile was not found."
+        );
+      }
+
+      const employeeId =
+        current.id ||
+        current.employee_id ||
+        current._id;
+
+      const detailed = await getEmployee(employeeId);
+
+      setEmployee(
+        detailed.employee ||
+          detailed.data ||
+          detailed
+      );
+    } catch (err) {
+      setError(
+        err.message || "Failed to load profile."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const name =
-    employee?.name ||
-    localStorage.getItem("username") ||
-    "Employee";
-
-  const email =
-    employee?.email ||
-    localStorage.getItem("email") ||
-    "Not Available";
-
   return (
-    <div style={styles.page}>
+    <div className="min-h-screen bg-gray-100">
+      <EmployeeSidebar />
+      <Navbar />
 
-      <h1>My Profile</h1>
+      <main className="ml-64 pt-20">
+        <div className="p-6">
 
-      <p style={styles.subtitle}>
-        View your employee information
-      </p>
+          <h1 className="text-3xl font-bold text-gray-800">
+            My Profile
+          </h1>
 
-      <div style={styles.card}>
+          <p className="mt-1 text-gray-500">
+            Your employee information.
+          </p>
 
-        <div style={styles.avatar}>
-          {name.charAt(0).toUpperCase()}
+          {error && (
+            <div className="mt-5 rounded-xl bg-red-50 p-4 text-red-700">
+              {error}
+            </div>
+          )}
+
+          {loading ? (
+            <p className="mt-6 text-gray-500">
+              Loading profile...
+            </p>
+          ) : employee ? (
+            <div className="mt-6 rounded-2xl bg-white p-6 shadow-sm">
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+
+                <div>
+                  <p className="text-sm text-gray-500">
+                    Employee Code
+                  </p>
+
+                  <p className="mt-1 font-semibold">
+                    {employee.employee_code ||
+                      "Not provided"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">
+                    First Name
+                  </p>
+
+                  <p className="mt-1 font-semibold">
+                    {employee.first_name ||
+                      "Not provided"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">
+                    Last Name
+                  </p>
+
+                  <p className="mt-1 font-semibold">
+                    {employee.last_name ||
+                      "Not provided"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">
+                    Phone
+                  </p>
+
+                  <p className="mt-1 font-semibold">
+                    {employee.phone ||
+                      "Not provided"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">
+                    Department
+                  </p>
+
+                  <p className="mt-1 font-semibold">
+                    {employee.department ||
+                      "Not provided"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">
+                    Designation
+                  </p>
+
+                  <p className="mt-1 font-semibold">
+                    {employee.designation ||
+                      "Not provided"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">
+                    Joining Date
+                  </p>
+
+                  <p className="mt-1 font-semibold">
+                    {employee.joining_date ||
+                      "Not provided"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">
+                    Employment Status
+                  </p>
+
+                  <p className="mt-1 font-semibold">
+                    {employee.employment_status ||
+                      "Not provided"}
+                  </p>
+                </div>
+
+                <div className="md:col-span-2">
+                  <p className="text-sm text-gray-500">
+                    Address
+                  </p>
+
+                  <p className="mt-1 font-semibold">
+                    {employee.address ||
+                      "Not provided"}
+                  </p>
+                </div>
+
+              </div>
+
+            </div>
+          ) : null}
+
         </div>
-
-        <h2>{name}</h2>
-
-        <div style={styles.info}>
-          <p>
-            <strong>Email:</strong> {email}
-          </p>
-
-          <p>
-            <strong>Department:</strong>{" "}
-            {employee?.department || "Not Available"}
-          </p>
-
-          <p>
-            <strong>Designation:</strong>{" "}
-            {employee?.designation || "Not Available"}
-          </p>
-
-          <p>
-            <strong>Attendance:</strong>{" "}
-            {employee?.attendance || "Not Marked"}
-          </p>
-        </div>
-
-      </div>
-
+      </main>
     </div>
   );
 }
-
-const styles = {
-  page: {
-    padding: "30px",
-    minHeight: "100vh",
-    background: "#f5f7fb",
-    fontFamily: "Arial, sans-serif",
-  },
-
-  subtitle: {
-    color: "#6b7280",
-  },
-
-  card: {
-    background: "white",
-    maxWidth: "600px",
-    padding: "30px",
-    marginTop: "25px",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-  },
-
-  avatar: {
-    width: "70px",
-    height: "70px",
-    borderRadius: "50%",
-    background: "#2563eb",
-    color: "white",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "28px",
-    fontWeight: "bold",
-  },
-
-  info: {
-    marginTop: "25px",
-    lineHeight: "1.8",
-  },
-};
 
 export default Profile;

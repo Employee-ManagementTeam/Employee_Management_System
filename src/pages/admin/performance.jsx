@@ -1,722 +1,335 @@
 import { useEffect, useState } from "react";
+import Sidebar from "../../components/sidebar";
+import Navbar from "../../components/navbar";
+
+import {
+  getPerformance,
+  createPerformance,
+  updatePerformance,
+  deletePerformance,
+} from "../../api/api";
 
 function Performance() {
   const [records, setRecords] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
 
-  const [formData, setFormData] = useState({
-    employee: "",
-    period: "",
-    rating: "3",
-    feedback: "",
+  const [form, setForm] = useState({
+    employee_id: "",
+    rating: 5,
+    review: "",
+    review_period: "",
+    status: "Completed",
   });
 
-  useEffect(() => {
-    const savedRecords =
-      JSON.parse(localStorage.getItem("emsPerformance")) || [];
+  const [editingId, setEditingId] = useState(null);
 
-    const savedEmployees =
-      JSON.parse(localStorage.getItem("emsEmployees")) || [];
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
-    setRecords(savedRecords);
-    setEmployees(savedEmployees);
-  }, []);
+  const loadPerformance = async () => {
+    try {
+      const response = await getPerformance();
 
-  const saveRecords = (data) => {
-    setRecords(data);
+      const data = Array.isArray(response)
+        ? response
+        : response?.performance ||
+          response?.records ||
+          response?.data ||
+          [];
 
-    localStorage.setItem(
-      "emsPerformance",
-      JSON.stringify(data)
-    );
+      setRecords(data);
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  useEffect(() => {
+    loadPerformance();
+  }, []);
 
-    setFormData({
-      ...formData,
-      [name]: value,
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      if (editingId) {
+        await updatePerformance(
+          editingId,
+          form
+        );
+
+        setMessage(
+          "Performance updated successfully."
+        );
+      } else {
+        await createPerformance({
+          ...form,
+          rating: Number(form.rating),
+        });
+
+        setMessage(
+          "Performance record created successfully."
+        );
+      }
+
+      setForm({
+        employee_id: "",
+        rating: 5,
+        review: "",
+        review_period: "",
+        status: "Completed",
+      });
+
+      setEditingId(null);
+
+      await loadPerformance();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleEdit = (record) => {
+    setEditingId(
+      record._id || record.id
+    );
+
+    setForm({
+      employee_id: record.employee_id || "",
+      rating: record.rating || 5,
+      review: record.review || "",
+      review_period:
+        record.review_period || "",
+      status:
+        record.status || "Completed",
     });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    if (
-      !formData.employee ||
-      !formData.period ||
-      !formData.feedback
-    ) {
-      alert("Please fill all fields.");
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this record?")) {
       return;
     }
 
-    const newRecord = {
-      id: Date.now(),
-      ...formData,
-      rating: Number(formData.rating),
-    };
+    try {
+      await deletePerformance(id);
 
-    saveRecords([
-      ...records,
-      newRecord,
-    ]);
+      setMessage(
+        "Performance record deleted successfully."
+      );
 
-    setFormData({
-      employee: "",
-      period: "",
-      rating: "3",
-      feedback: "",
-    });
-
-    setShowForm(false);
+      await loadPerformance();
+    } catch (err) {
+      setError(err.message);
+    }
   };
-
-  const updateRating = (id, rating) => {
-    const updatedRecords = records.map(
-      (record) =>
-        record.id === id
-          ? {
-              ...record,
-              rating: Number(rating),
-            }
-          : record
-    );
-
-    saveRecords(updatedRecords);
-  };
-
-  const deleteRecord = (id) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this performance record?"
-    );
-
-    if (!confirmed) return;
-
-    const updatedRecords = records.filter(
-      (record) => record.id !== id
-    );
-
-    saveRecords(updatedRecords);
-  };
-
-  const filteredRecords = records.filter((record) => {
-    const text = search.toLowerCase();
-
-    return (
-      record.employee
-        .toLowerCase()
-        .includes(text) ||
-      record.period
-        .toLowerCase()
-        .includes(text) ||
-      record.feedback
-        .toLowerCase()
-        .includes(text)
-    );
-  });
-
-  const averageRating =
-    records.length > 0
-      ? (
-          records.reduce(
-            (total, record) =>
-              total + Number(record.rating),
-            0
-          ) / records.length
-        ).toFixed(1)
-      : "0.0";
-
-  const excellent = records.filter(
-    (record) => Number(record.rating) >= 4
-  ).length;
-
-  const needsImprovement = records.filter(
-    (record) => Number(record.rating) <= 2
-  ).length;
 
   return (
-    <div style={styles.page}>
+    <div className="min-h-screen bg-gray-100">
+      <Sidebar />
+      <Navbar />
 
-      {/* HEADER */}
+      <main className="ml-64 pt-20">
+        <div className="p-8">
 
-      <div style={styles.header}>
-
-        <div>
-          <h1 style={styles.title}>
-            Performance Management
+          <h1 className="text-3xl font-bold text-gray-800">
+            Performance
           </h1>
 
-          <p style={styles.subtitle}>
-            Evaluate employee performance and feedback
+          <p className="mb-8 text-gray-500">
+            Manage employee performance reviews
           </p>
-        </div>
 
-        <button
-          style={styles.addButton}
-          onClick={() => setShowForm(true)}
-        >
-          + Add Evaluation
-        </button>
+          {message && (
+            <div className="mb-4 rounded-xl bg-green-50 p-4 text-green-700">
+              {message}
+            </div>
+          )}
 
-      </div>
+          {error && (
+            <div className="mb-4 rounded-xl bg-red-50 p-4 text-red-600">
+              {error}
+            </div>
+          )}
 
+          <form
+            onSubmit={handleSubmit}
+            className="mb-8 rounded-2xl bg-white p-6 shadow-sm"
+          >
+            <h2 className="mb-5 text-xl font-bold">
+              {editingId
+                ? "Edit Performance"
+                : "Add Performance"}
+            </h2>
 
-      {/* SUMMARY */}
-
-      <div style={styles.summaryGrid}>
-
-        <SummaryCard
-          title="Total Evaluations"
-          value={records.length}
-          icon="📊"
-        />
-
-        <SummaryCard
-          title="Average Rating"
-          value={`${averageRating}/5`}
-          icon="⭐"
-        />
-
-        <SummaryCard
-          title="Good Performance"
-          value={excellent}
-          icon="🏆"
-        />
-
-        <SummaryCard
-          title="Needs Improvement"
-          value={needsImprovement}
-          icon="📈"
-        />
-
-      </div>
-
-
-      {/* FORM */}
-
-      {showForm && (
-        <div style={styles.formCard}>
-
-          <h2 style={styles.formTitle}>
-            New Performance Evaluation
-          </h2>
-
-          <form onSubmit={handleSubmit}>
-
-            <div style={styles.formGrid}>
-
-              <select
-                name="employee"
-                value={formData.employee}
-                onChange={handleChange}
-                style={styles.input}
-              >
-                <option value="">
-                  Select Employee
-                </option>
-
-                {employees.map((employee) => (
-                  <option
-                    key={employee.id}
-                    value={employee.name}
-                  >
-                    {employee.name}
-                  </option>
-                ))}
-
-              </select>
+            <div className="grid gap-4 md:grid-cols-2">
 
               <input
-                type="text"
-                name="period"
-                placeholder="Evaluation period (e.g. Q1 2026)"
-                value={formData.period}
-                onChange={handleChange}
-                style={styles.input}
+                value={form.employee_id}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    employee_id:
+                      e.target.value,
+                  })
+                }
+                placeholder="Employee ID"
+                className="rounded-xl border px-4 py-3"
+                required
+              />
+
+              <input
+                type="number"
+                min="1"
+                max="5"
+                value={form.rating}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    rating: e.target.value,
+                  })
+                }
+                placeholder="Rating"
+                className="rounded-xl border px-4 py-3"
+                required
+              />
+
+              <input
+                value={form.review_period}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    review_period:
+                      e.target.value,
+                  })
+                }
+                placeholder="2026-Q3"
+                className="rounded-xl border px-4 py-3"
+                required
               />
 
               <select
-                name="rating"
-                value={formData.rating}
-                onChange={handleChange}
-                style={styles.input}
+                value={form.status}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    status: e.target.value,
+                  })
+                }
+                className="rounded-xl border px-4 py-3"
               >
-                <option value="1">
-                  1 - Poor
-                </option>
-
-                <option value="2">
-                  2 - Needs Improvement
-                </option>
-
-                <option value="3">
-                  3 - Average
-                </option>
-
-                <option value="4">
-                  4 - Good
-                </option>
-
-                <option value="5">
-                  5 - Excellent
-                </option>
-
+                <option>Completed</option>
+                <option>Pending</option>
               </select>
 
               <textarea
-                name="feedback"
-                placeholder="Enter performance feedback"
-                value={formData.feedback}
-                onChange={handleChange}
-                style={styles.textarea}
+                value={form.review}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    review: e.target.value,
+                  })
+                }
+                placeholder="Performance review"
+                className="rounded-xl border px-4 py-3 md:col-span-2"
+                required
               />
 
             </div>
 
-            <div style={styles.formButtons}>
+            <div className="mt-5 flex gap-3">
 
-              <button
-                type="submit"
-                style={styles.saveButton}
-              >
-                Save Evaluation
+              <button className="rounded-xl bg-orange-600 px-6 py-3 font-semibold text-white hover:bg-orange-700">
+                {editingId
+                  ? "Update"
+                  : "Add Performance"}
               </button>
 
-              <button
-                type="button"
-                style={styles.cancelButton}
-                onClick={() => setShowForm(false)}
-              >
-                Cancel
-              </button>
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingId(null);
+
+                    setForm({
+                      employee_id: "",
+                      rating: 5,
+                      review: "",
+                      review_period: "",
+                      status: "Completed",
+                    });
+                  }}
+                  className="rounded-xl bg-gray-200 px-6 py-3"
+                >
+                  Cancel
+                </button>
+              )}
 
             </div>
-
           </form>
 
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+
+            {records.map((record, index) => {
+
+              const id =
+                record._id ||
+                record.id ||
+                index;
+
+              return (
+                <div
+                  key={id}
+                  className="rounded-2xl bg-white p-6 shadow-sm"
+                >
+                  <div className="flex items-center justify-between">
+
+                    <h3 className="font-bold">
+                      Employee{" "}
+                      {record.employee_id}
+                    </h3>
+
+                    <span className="text-xl">
+                      ⭐ {record.rating}
+                    </span>
+
+                  </div>
+
+                  <p className="mt-3 text-gray-600">
+                    {record.review}
+                  </p>
+
+                  <p className="mt-3 text-sm text-gray-500">
+                    {record.review_period}
+                  </p>
+
+                  <div className="mt-5 flex gap-2">
+
+                    <button
+                      onClick={() =>
+                        handleEdit(record)
+                      }
+                      className="rounded-lg bg-orange-100 px-3 py-2 text-orange-700"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        handleDelete(id)
+                      }
+                      className="rounded-lg bg-red-100 px-3 py-2 text-red-600"
+                    >
+                      Delete
+                    </button>
+
+                  </div>
+                </div>
+              );
+            })}
+
+          </div>
+
         </div>
-      )}
-
-
-      {/* SEARCH */}
-
-      <div style={styles.searchContainer}>
-
-        <input
-          type="text"
-          placeholder="Search performance records..."
-          value={search}
-          onChange={(e) =>
-            setSearch(e.target.value)
-          }
-          style={styles.search}
-        />
-
-        <span style={styles.count}>
-          {filteredRecords.length} Evaluations
-        </span>
-
-      </div>
-
-
-      {/* TABLE */}
-
-      <div style={styles.tableCard}>
-
-        {filteredRecords.length === 0 ? (
-
-          <div style={styles.empty}>
-
-            <div style={styles.emptyIcon}>
-              ⭐
-            </div>
-
-            <h3>
-              No performance records
-            </h3>
-
-            <p>
-              Add an evaluation to see it here.
-            </p>
-
-          </div>
-
-        ) : (
-
-          <div style={styles.tableWrapper}>
-
-            <table style={styles.table}>
-
-              <thead>
-
-                <tr>
-
-                  <th style={styles.th}>
-                    Employee
-                  </th>
-
-                  <th style={styles.th}>
-                    Period
-                  </th>
-
-                  <th style={styles.th}>
-                    Rating
-                  </th>
-
-                  <th style={styles.th}>
-                    Feedback
-                  </th>
-
-                  <th style={styles.th}>
-                    Action
-                  </th>
-
-                </tr>
-
-              </thead>
-
-              <tbody>
-
-                {filteredRecords.map((record) => (
-
-                  <tr key={record.id}>
-
-                    <td style={styles.td}>
-                      <strong>
-                        {record.employee}
-                      </strong>
-                    </td>
-
-                    <td style={styles.td}>
-                      {record.period}
-                    </td>
-
-                    <td style={styles.td}>
-
-                      <select
-                        value={record.rating}
-                        onChange={(e) =>
-                          updateRating(
-                            record.id,
-                            e.target.value
-                          )
-                        }
-                        style={styles.ratingSelect}
-                      >
-                        <option value="1">
-                          1 / 5
-                        </option>
-
-                        <option value="2">
-                          2 / 5
-                        </option>
-
-                        <option value="3">
-                          3 / 5
-                        </option>
-
-                        <option value="4">
-                          4 / 5
-                        </option>
-
-                        <option value="5">
-                          5 / 5
-                        </option>
-
-                      </select>
-
-                    </td>
-
-                    <td style={styles.td}>
-                      {record.feedback}
-                    </td>
-
-                    <td style={styles.td}>
-
-                      <button
-                        style={styles.deleteButton}
-                        onClick={() =>
-                          deleteRecord(record.id)
-                        }
-                      >
-                        Delete
-                      </button>
-
-                    </td>
-
-                  </tr>
-
-                ))}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        )}
-
-      </div>
-
+      </main>
     </div>
   );
 }
-
-
-function SummaryCard({
-  title,
-  value,
-  icon,
-}) {
-  return (
-    <div style={styles.summaryCard}>
-
-      <div>
-
-        <p style={styles.summaryTitle}>
-          {title}
-        </p>
-
-        <h2 style={styles.summaryValue}>
-          {value}
-        </h2>
-
-      </div>
-
-      <div style={styles.summaryIcon}>
-        {icon}
-      </div>
-
-    </div>
-  );
-}
-
-
-const styles = {
-
-  page: {
-    padding: "30px",
-    background: "#f5f7fb",
-    minHeight: "calc(100vh - 80px)",
-  },
-
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "25px",
-  },
-
-  title: {
-    margin: 0,
-    fontSize: "26px",
-    color: "#111827",
-  },
-
-  subtitle: {
-    margin: "5px 0 0",
-    color: "#6b7280",
-    fontSize: "14px",
-  },
-
-  addButton: {
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    padding: "12px 18px",
-    borderRadius: "7px",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-
-  summaryGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: "18px",
-    marginBottom: "25px",
-  },
-
-  summaryCard: {
-    background: "white",
-    padding: "20px",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  summaryTitle: {
-    margin: 0,
-    color: "#6b7280",
-    fontSize: "13px",
-  },
-
-  summaryValue: {
-    margin: "7px 0 0",
-    fontSize: "26px",
-    color: "#111827",
-  },
-
-  summaryIcon: {
-    width: "45px",
-    height: "45px",
-    borderRadius: "10px",
-    background: "#eff6ff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "23px",
-  },
-
-  formCard: {
-    background: "white",
-    padding: "25px",
-    borderRadius: "10px",
-    marginBottom: "20px",
-    border: "1px solid #e5e7eb",
-  },
-
-  formTitle: {
-    marginTop: 0,
-    marginBottom: "20px",
-  },
-
-  formGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "15px",
-  },
-
-  input: {
-    width: "100%",
-    boxSizing: "border-box",
-    padding: "12px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-    fontSize: "14px",
-  },
-
-  textarea: {
-    gridColumn: "1 / -1",
-    minHeight: "100px",
-    padding: "12px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-    fontSize: "14px",
-    resize: "vertical",
-    fontFamily: "Arial",
-  },
-
-  formButtons: {
-    display: "flex",
-    gap: "10px",
-    marginTop: "20px",
-  },
-
-  saveButton: {
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    padding: "11px 18px",
-    borderRadius: "7px",
-    cursor: "pointer",
-  },
-
-  cancelButton: {
-    background: "#e5e7eb",
-    color: "#374151",
-    border: "none",
-    padding: "11px 18px",
-    borderRadius: "7px",
-    cursor: "pointer",
-  },
-
-  searchContainer: {
-    background: "white",
-    padding: "18px",
-    borderRadius: "10px",
-    marginBottom: "20px",
-    border: "1px solid #e5e7eb",
-    display: "flex",
-    gap: "15px",
-    alignItems: "center",
-  },
-
-  search: {
-    flex: 1,
-    padding: "11px 14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-    fontSize: "14px",
-  },
-
-  count: {
-    color: "#6b7280",
-    fontSize: "13px",
-  },
-
-  tableCard: {
-    background: "white",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-    overflow: "hidden",
-  },
-
-  tableWrapper: {
-    overflowX: "auto",
-  },
-
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-
-  th: {
-    textAlign: "left",
-    padding: "15px",
-    background: "#f9fafb",
-    color: "#374151",
-    fontSize: "13px",
-    borderBottom: "1px solid #e5e7eb",
-  },
-
-  td: {
-    padding: "15px",
-    borderBottom: "1px solid #f1f5f9",
-    color: "#4b5563",
-    fontSize: "13px",
-  },
-
-  ratingSelect: {
-    padding: "7px",
-    border: "1px solid #d1d5db",
-    borderRadius: "5px",
-    cursor: "pointer",
-  },
-
-  deleteButton: {
-    background: "#fee2e2",
-    color: "#991b1b",
-    border: "none",
-    padding: "7px 10px",
-    borderRadius: "5px",
-    cursor: "pointer",
-  },
-
-  empty: {
-    textAlign: "center",
-    padding: "70px 20px",
-    color: "#6b7280",
-  },
-
-  emptyIcon: {
-    fontSize: "45px",
-  },
-};
 
 export default Performance;

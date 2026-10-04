@@ -1,20 +1,27 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-/* Authentication */
+/* ================= AUTH ================= */
+
 import Login from "./pages/auth/login";
 import Register from "./pages/auth/Register";
 
 /* ================= ADMIN ================= */
 
 import AdminDashboard from "./pages/admin/dashboard";
-import Employees from "./pages/admin/employees";
-import Departments from "./pages/admin/departments";
-import Attendance from "./pages/admin/attendance";
-import Leave from "./pages/admin/leave";
-import Tasks from "./pages/admin/tasks";
-import Performance from "./pages/admin/performance";
-import Documents from "./pages/admin/documents";
-import Payroll from "./pages/admin/payroll";
+import AdminEmployees from "./pages/admin/employees";
+import AdminDepartments from "./pages/admin/departments";
+import AdminAttendance from "./pages/admin/attendance";
+import AdminLeave from "./pages/admin/leave";
+import AdminTasks from "./pages/admin/tasks";
+import AdminPerformance from "./pages/admin/performance";
+import AdminDocuments from "./pages/admin/documents";
+import AdminPayroll from "./pages/admin/payroll";
+import AdminActivityLogs from "./pages/admin/activitylogs";
+import AdminNotifications from "./pages/admin/notifications";
+import AdminReports from "./pages/admin/reports";
+import AdminSalary from "./pages/admin/salary";
+
+/* ================= MANAGER ================= */
 
 /* ================= MANAGER ================= */
 
@@ -22,9 +29,12 @@ import ManagerDashboard from "./pages/manager/dashboard";
 import ManagerEmployees from "./pages/manager/employees";
 import ManagerDepartments from "./pages/manager/departments";
 import ManagerAttendance from "./pages/manager/attendance";
-import LeaveApprovals from "./pages/manager/leaveapprovals";
+import ManagerLeaveApprovals from "./pages/manager/leaveapprovals";
 import ManagerTasks from "./pages/manager/tasks";
 import ManagerPerformance from "./pages/manager/performance";
+import ManagerReports from "./pages/manager/reports";
+import ManagerNotifications from "./pages/manager/notifications";
+import ManagerDocuments from "./pages/manager/documents";
 
 /* ================= EMPLOYEE ================= */
 
@@ -37,12 +47,12 @@ import EmployeePayroll from "./pages/employee/payroll";
 import EmployeePerformance from "./pages/employee/performance";
 import EmployeeProfile from "./pages/employee/profile";
 import EmployeeTasks from "./pages/employee/tasks";
+import EmployeeActivityLogs from "./pages/employee/activitylogs";
 
 
 function App() {
   return (
     <BrowserRouter>
-
       <Routes>
 
         {/* ================= AUTH ================= */}
@@ -67,87 +77,121 @@ function App() {
 
         <Route
           path="/admin/employees"
-          element={<Employees />}
+          element={<AdminEmployees />}
         />
 
         <Route
           path="/admin/departments"
-          element={<Departments />}
+          element={<AdminDepartments />}
         />
 
         <Route
           path="/admin/attendance"
-          element={<Attendance />}
+          element={<AdminAttendance />}
         />
 
         <Route
           path="/admin/leave-management"
-          element={<Leave />}
+          element={<AdminLeave />}
         />
 
         <Route
           path="/admin/tasks"
-          element={<Tasks />}
+          element={<AdminTasks />}
         />
 
         <Route
           path="/admin/performance"
-          element={<Performance />}
+          element={<AdminPerformance />}
         />
 
         <Route
           path="/admin/documents"
-          element={<Documents />}
+          element={<AdminDocuments />}
         />
 
         <Route
           path="/admin/payroll"
-          element={<Payroll />}
+          element={<AdminPayroll />}
+        />
+
+        <Route
+          path="/admin/activity-logs"
+          element={<AdminActivityLogs />}
+        />
+
+        <Route
+          path="/admin/notifications"
+          element={<AdminNotifications />}
+        />
+
+        <Route
+          path="/admin/reports"
+          element={<AdminReports />}
+        />
+
+        <Route
+          path="/admin/salary"
+          element={<AdminSalary />}
         />
 
 
         {/* ================= MANAGER ================= */}
 
         <Route
-          path="/manager/dashboard"
-          element={<ManagerDashboard />}
-        />
+  path="/manager/dashboard"
+  element={<ManagerDashboard />}
+/>
 
-        <Route
-          path="/manager/employees"
-          element={<ManagerEmployees />}
-        />
+<Route
+  path="/manager/employees"
+  element={<ManagerEmployees />}
+/>
 
-        <Route
-          path="/manager/departments"
-          element={<ManagerDepartments />}
-        />
+<Route
+  path="/manager/departments"
+  element={<ManagerDepartments />}
+/>
 
-        <Route
-          path="/manager/attendance"
-          element={<ManagerAttendance />}
-        />
+<Route
+  path="/manager/attendance"
+  element={<ManagerAttendance />}
+/>
 
-        <Route
-          path="/manager/leaveapprovals"
-          element={<LeaveApprovals />}
-        />
+<Route
+  path="/manager/leaveapprovals"
+  element={<ManagerLeaveApprovals />}
+/>
 
-        <Route
-          path="/manager/tasks"
-          element={<ManagerTasks />}
-        />
+<Route
+  path="/manager/tasks"
+  element={<ManagerTasks />}
+/>
 
-        <Route
-          path="/manager/performance"
-          element={<ManagerPerformance />}
-        />
+<Route
+  path="/manager/performance"
+  element={<ManagerPerformance />}
+/>
 
+<Route
+  path="/manager/reports"
+  element={<ManagerReports />}
+/>
+
+<Route
+  path="/manager/notifications"
+  element={<ManagerNotifications />}
+/>
+
+<Route
+  path="/manager/documents"
+  element={<ManagerDocuments />}
+/>
 
         {/* ================= EMPLOYEE ================= */}
 
         <Route
-          path="/employee/dashboard"
+          path="/employee/Dashboard"
           element={<EmployeeDashboard />}
         />
 
@@ -157,8 +201,8 @@ function App() {
         />
 
         <Route
-          path="/employee/documents"
-          element={<EmployeeDocuments />}
+          path="/employee/tasks"
+          element={<EmployeeTasks />}
         />
 
         <Route
@@ -167,8 +211,13 @@ function App() {
         />
 
         <Route
-          path="/employee/notifications"
-          element={<EmployeeNotifications />}
+          path="/employee/performance"
+          element={<EmployeePerformance />}
+        />
+
+        <Route
+          path="/employee/documents"
+          element={<EmployeeDocuments />}
         />
 
         <Route
@@ -177,8 +226,8 @@ function App() {
         />
 
         <Route
-          path="/employee/performance"
-          element={<EmployeePerformance />}
+          path="/employee/notifications"
+          element={<EmployeeNotifications />}
         />
 
         <Route
@@ -187,8 +236,8 @@ function App() {
         />
 
         <Route
-          path="/employee/tasks"
-          element={<EmployeeTasks />}
+          path="/employee/activitylogs"
+          element={<EmployeeActivityLogs />}
         />
 
 
@@ -205,7 +254,6 @@ function App() {
         />
 
       </Routes>
-
     </BrowserRouter>
   );
 }

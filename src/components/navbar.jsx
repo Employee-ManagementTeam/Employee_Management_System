@@ -1,27 +1,55 @@
-function Navbar({ user }) {
+function Navbar() {
+  const username =
+    localStorage.getItem("username") || "Administrator";
+
+  const role =
+    localStorage.getItem("role") || "Admin";
+
   return (
-    <header className="h-16 bg-white border-b flex items-center justify-between px-6">
+    <header className="fixed left-64 right-0 top-0 z-30 h-20 border-b border-gray-200 bg-white shadow-sm">
 
-      <div>
-        <h1 className="text-xl font-semibold text-gray-800">
-          Dashboard
-        </h1>
-      </div>
+      <div className="flex h-full items-center justify-between px-8">
 
-      <div className="flex items-center gap-4">
-
-        <div className="text-right">
-          <p className="font-semibold text-gray-800">
-            {user?.username || "User"}
-          </p>
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">
+            Admin Portal
+          </h2>
 
           <p className="text-sm text-gray-500">
-            {user?.role || "Employee"}
+            Manage your organization
           </p>
         </div>
 
-        <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">
-          {user?.username?.charAt(0).toUpperCase() || "U"}
+        <div className="flex items-center gap-6">
+
+          {/* Notification */}
+          <button className="relative rounded-full p-2 text-gray-500 transition hover:bg-orange-50 hover:text-orange-600">
+            🔔
+
+            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-orange-500" />
+          </button>
+
+          {/* User */}
+          <div className="flex items-center gap-3 border-l border-gray-200 pl-6">
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 font-bold text-orange-600">
+              {username.charAt(0).toUpperCase()}
+            </div>
+
+            <div className="hidden sm:block">
+
+              <p className="text-sm font-semibold text-gray-800">
+                {username}
+              </p>
+
+              <p className="text-xs capitalize text-gray-500">
+                {role}
+              </p>
+
+            </div>
+
+          </div>
+
         </div>
 
       </div>

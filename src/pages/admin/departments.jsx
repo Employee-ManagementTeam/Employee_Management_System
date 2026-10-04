@@ -1,560 +1,258 @@
 import { useEffect, useState } from "react";
+import Sidebar from "../../components/sidebar";
+import Navbar from "../../components/navbar";
 
-function Departments() {
+import {
+  getDepartments,
+  createDepartment,
+  updateDepartment,
+  deleteDepartment,
+} from "../../api/api";
+
+function Department() {
   const [departments, setDepartments] = useState([]);
-  const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
 
-  const [formData, setFormData] = useState({
-    id: null,
-    name: "",
-    description: "",
-    manager: "",
-  });
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
 
-  // Load departments
+  const [editingId, setEditingId] = useState(null);
+
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const loadDepartments = async () => {
+    try {
+      const response = await getDepartments();
+
+      const data = Array.isArray(response)
+        ? response
+        : response?.departments ||
+          response?.data ||
+          [];
+
+      setDepartments(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   useEffect(() => {
-    const savedDepartments =
-      JSON.parse(localStorage.getItem("emsDepartments")) || [];
-
-    setDepartments(savedDepartments);
+    loadDepartments();
   }, []);
 
-  // Save departments
-  const saveDepartments = (data) => {
-    setDepartments(data);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-    localStorage.setItem(
-      "emsDepartments",
-      JSON.stringify(data)
+    try {
+      setError("");
+      setMessage("");
+
+      if (editingId) {
+        await updateDepartment(editingId, {
+          name,
+          description,
+        });
+
+        setMessage("Department updated successfully.");
+      } else {
+        await createDepartment({
+          name,
+          description,
+        });
+
+        setMessage("Department created successfully.");
+      }
+
+      setName("");
+      setDescription("");
+      setEditingId(null);
+
+      await loadDepartments();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleEdit = (department) => {
+    setEditingId(
+      department._id || department.id
+    );
+
+    setName(department.name || "");
+    setDescription(
+      department.description || ""
     );
   };
 
-  // Handle input
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-  };
-
-  // Add / Update
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    if (
-      !formData.name ||
-      !formData.description ||
-      !formData.manager
-    ) {
-      alert("Please fill all fields.");
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this department?")) {
       return;
     }
 
-    if (formData.id) {
-      const updatedDepartments = departments.map(
-        (department) =>
-          department.id === formData.id
-            ? formData
-            : department
-      );
+    try {
+      await deleteDepartment(id);
 
-      saveDepartments(updatedDepartments);
-    } else {
-      const newDepartment = {
-        ...formData,
-        id: Date.now(),
-      };
+      setMessage("Department deleted successfully.");
 
-      saveDepartments([
-        ...departments,
-        newDepartment,
-      ]);
+      await loadDepartments();
+    } catch (err) {
+      setError(err.message);
     }
-
-    resetForm();
   };
-
-  // Edit
-  const handleEdit = (department) => {
-    setFormData(department);
-    setShowForm(true);
-  };
-
-  // Delete
-  const handleDelete = (id) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this department?"
-    );
-
-    if (!confirmDelete) return;
-
-    const updatedDepartments =
-      departments.filter(
-        (department) =>
-          department.id !== id
-      );
-
-    saveDepartments(updatedDepartments);
-  };
-
-  // Reset
-  const resetForm = () => {
-    setFormData({
-      id: null,
-      name: "",
-      description: "",
-      manager: "",
-    });
-
-    setShowForm(false);
-  };
-
-  // Search
-  const filteredDepartments =
-    departments.filter((department) => {
-      const text = search.toLowerCase();
-
-      return (
-        department.name
-          .toLowerCase()
-          .includes(text) ||
-        department.description
-          .toLowerCase()
-          .includes(text) ||
-        department.manager
-          .toLowerCase()
-          .includes(text)
-      );
-    });
 
   return (
-    <div style={styles.page}>
+    <div className="min-h-screen bg-gray-100">
+      <Sidebar />
+      <Navbar />
 
-      {/* HEADER */}
+      <main className="ml-64 pt-20">
+        <div className="p-8">
 
-      <div style={styles.header}>
-
-        <div>
-          <h1 style={styles.title}>
+          <h1 className="text-3xl font-bold text-gray-800">
             Departments
           </h1>
 
-          <p style={styles.subtitle}>
-            Manage company departments
+          <p className="mb-8 text-gray-500">
+            Manage organization departments
           </p>
-        </div>
 
-        <button
-          style={styles.addButton}
-          onClick={() => {
-            resetForm();
-            setShowForm(true);
-          }}
-        >
-          + Add Department
-        </button>
+          {message && (
+            <div className="mb-4 rounded-xl bg-green-50 p-4 text-green-700">
+              {message}
+            </div>
+          )}
 
-      </div>
+          {error && (
+            <div className="mb-4 rounded-xl bg-red-50 p-4 text-red-600">
+              {error}
+            </div>
+          )}
 
+          <form
+            onSubmit={handleSubmit}
+            className="mb-8 rounded-2xl bg-white p-6 shadow-sm"
+          >
+            <h2 className="mb-5 text-xl font-bold">
+              {editingId
+                ? "Edit Department"
+                : "Add Department"}
+            </h2>
 
-      {/* SEARCH */}
-
-      <div style={styles.searchContainer}>
-
-        <input
-          type="text"
-          placeholder="Search departments..."
-          value={search}
-          onChange={(e) =>
-            setSearch(e.target.value)
-          }
-          style={styles.search}
-        />
-
-        <span style={styles.count}>
-          {filteredDepartments.length} Departments
-        </span>
-
-      </div>
-
-
-      {/* FORM */}
-
-      {showForm && (
-        <div style={styles.formCard}>
-
-          <h2 style={styles.formTitle}>
-            {formData.id
-              ? "Edit Department"
-              : "Add Department"}
-          </h2>
-
-          <form onSubmit={handleSubmit}>
-
-            <div style={styles.formGrid}>
+            <div className="grid gap-4 md:grid-cols-2">
 
               <input
-                type="text"
-                name="name"
-                placeholder="Department Name"
-                value={formData.name}
-                onChange={handleChange}
-                style={styles.input}
+                value={name}
+                onChange={(e) =>
+                  setName(e.target.value)
+                }
+                placeholder="Department name"
+                className="rounded-xl border px-4 py-3 outline-none focus:border-orange-500"
+                required
               />
 
               <input
-                type="text"
-                name="manager"
-                placeholder="Department Manager"
-                value={formData.manager}
-                onChange={handleChange}
-                style={styles.input}
-              />
-
-              <textarea
-                name="description"
-                placeholder="Department Description"
-                value={formData.description}
-                onChange={handleChange}
-                style={styles.textarea}
+                value={description}
+                onChange={(e) =>
+                  setDescription(e.target.value)
+                }
+                placeholder="Description"
+                className="rounded-xl border px-4 py-3 outline-none focus:border-orange-500"
+                required
               />
 
             </div>
 
-            <div style={styles.formButtons}>
+            <div className="mt-5 flex gap-3">
 
               <button
-                type="submit"
-                style={styles.saveButton}
+                className="rounded-xl bg-orange-600 px-6 py-3 font-semibold text-white hover:bg-orange-700"
               >
-                {formData.id
+                {editingId
                   ? "Update Department"
-                  : "Save Department"}
+                  : "Add Department"}
               </button>
 
-              <button
-                type="button"
-                style={styles.cancelButton}
-                onClick={resetForm}
-              >
-                Cancel
-              </button>
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingId(null);
+                    setName("");
+                    setDescription("");
+                  }}
+                  className="rounded-xl bg-gray-200 px-6 py-3"
+                >
+                  Cancel
+                </button>
+              )}
 
             </div>
-
           </form>
 
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+
+            {departments.map((department) => {
+
+              const id =
+                department._id ||
+                department.id;
+
+              return (
+                <div
+                  key={id}
+                  className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-lg"
+                >
+                  <div className="mb-4 flex items-center justify-between">
+
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-100 text-xl">
+                      🏢
+                    </div>
+
+                    <span className="rounded-full bg-orange-50 px-3 py-1 text-xs text-orange-600">
+                      Department
+                    </span>
+
+                  </div>
+
+                  <h3 className="text-xl font-bold">
+                    {department.name}
+                  </h3>
+
+                  <p className="mt-2 text-sm text-gray-500">
+                    {department.description}
+                  </p>
+
+                  <div className="mt-5 flex gap-2">
+
+                    <button
+                      onClick={() =>
+                        handleEdit(department)
+                      }
+                      className="rounded-lg bg-orange-100 px-4 py-2 text-orange-700"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        handleDelete(id)
+                      }
+                      className="rounded-lg bg-red-100 px-4 py-2 text-red-600"
+                    >
+                      Delete
+                    </button>
+
+                  </div>
+                </div>
+              );
+            })}
+
+          </div>
+
         </div>
-      )}
-
-
-      {/* TABLE */}
-
-      <div style={styles.tableCard}>
-
-        {filteredDepartments.length === 0 ? (
-
-          <div style={styles.empty}>
-
-            <div style={styles.emptyIcon}>
-              🏢
-            </div>
-
-            <h3>
-              No departments found
-            </h3>
-
-            <p>
-              Add your first department
-              using the button above.
-            </p>
-
-          </div>
-
-        ) : (
-
-          <div style={styles.tableWrapper}>
-
-            <table style={styles.table}>
-
-              <thead>
-
-                <tr>
-
-                  <th style={styles.th}>
-                    Department
-                  </th>
-
-                  <th style={styles.th}>
-                    Description
-                  </th>
-
-                  <th style={styles.th}>
-                    Manager
-                  </th>
-
-                  <th style={styles.th}>
-                    Actions
-                  </th>
-
-                </tr>
-
-              </thead>
-
-              <tbody>
-
-                {filteredDepartments.map(
-                  (department) => (
-
-                    <tr key={department.id}>
-
-                      <td style={styles.td}>
-                        <strong>
-                          {department.name}
-                        </strong>
-                      </td>
-
-                      <td style={styles.td}>
-                        {department.description}
-                      </td>
-
-                      <td style={styles.td}>
-                        {department.manager}
-                      </td>
-
-                      <td style={styles.td}>
-
-                        <button
-                          style={styles.editButton}
-                          onClick={() =>
-                            handleEdit(department)
-                          }
-                        >
-                          Edit
-                        </button>
-
-                        <button
-                          style={styles.deleteButton}
-                          onClick={() =>
-                            handleDelete(
-                              department.id
-                            )
-                          }
-                        >
-                          Delete
-                        </button>
-
-                      </td>
-
-                    </tr>
-
-                  )
-                )}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        )}
-
-      </div>
-
+      </main>
     </div>
   );
 }
 
-
-const styles = {
-
-  page: {
-    padding: "30px",
-    background: "#f5f7fb",
-    minHeight: "calc(100vh - 80px)",
-  },
-
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "25px",
-  },
-
-  title: {
-    margin: 0,
-    fontSize: "26px",
-    color: "#111827",
-  },
-
-  subtitle: {
-    margin: "5px 0 0",
-    color: "#6b7280",
-    fontSize: "14px",
-  },
-
-  addButton: {
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    padding: "12px 18px",
-    borderRadius: "7px",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-
-  searchContainer: {
-    background: "white",
-    padding: "18px",
-    borderRadius: "10px",
-    marginBottom: "20px",
-    border: "1px solid #e5e7eb",
-    display: "flex",
-    alignItems: "center",
-    gap: "15px",
-  },
-
-  search: {
-    flex: 1,
-    padding: "11px 14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-    fontSize: "14px",
-  },
-
-  count: {
-    color: "#6b7280",
-    fontSize: "13px",
-    whiteSpace: "nowrap",
-  },
-
-  formCard: {
-    background: "white",
-    padding: "25px",
-    borderRadius: "10px",
-    marginBottom: "20px",
-    border: "1px solid #e5e7eb",
-  },
-
-  formTitle: {
-    marginTop: 0,
-    marginBottom: "20px",
-  },
-
-  formGrid: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(2, 1fr)",
-    gap: "15px",
-  },
-
-  input: {
-    padding: "12px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-    fontSize: "14px",
-    boxSizing: "border-box",
-    width: "100%",
-  },
-
-  textarea: {
-    padding: "12px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-    fontSize: "14px",
-    minHeight: "90px",
-    resize: "vertical",
-    gridColumn: "1 / -1",
-    fontFamily: "Arial",
-  },
-
-  formButtons: {
-    display: "flex",
-    gap: "10px",
-    marginTop: "20px",
-  },
-
-  saveButton: {
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    padding: "11px 18px",
-    borderRadius: "7px",
-    cursor: "pointer",
-  },
-
-  cancelButton: {
-    background: "#e5e7eb",
-    color: "#374151",
-    border: "none",
-    padding: "11px 18px",
-    borderRadius: "7px",
-    cursor: "pointer",
-  },
-
-  tableCard: {
-    background: "white",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-    overflow: "hidden",
-  },
-
-  tableWrapper: {
-    overflowX: "auto",
-  },
-
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-
-  th: {
-    textAlign: "left",
-    padding: "15px",
-    background: "#f9fafb",
-    color: "#374151",
-    fontSize: "13px",
-    borderBottom: "1px solid #e5e7eb",
-  },
-
-  td: {
-    padding: "15px",
-    borderBottom: "1px solid #f1f5f9",
-    color: "#4b5563",
-    fontSize: "13px",
-  },
-
-  editButton: {
-    background: "#eff6ff",
-    color: "#2563eb",
-    border: "none",
-    padding: "7px 10px",
-    borderRadius: "5px",
-    cursor: "pointer",
-    marginRight: "7px",
-  },
-
-  deleteButton: {
-    background: "#fef2f2",
-    color: "#dc2626",
-    border: "none",
-    padding: "7px 10px",
-    borderRadius: "5px",
-    cursor: "pointer",
-  },
-
-  empty: {
-    textAlign: "center",
-    padding: "70px 20px",
-    color: "#6b7280",
-  },
-
-  emptyIcon: {
-    fontSize: "45px",
-  },
-};
-
-export default Departments;
+export default Department;

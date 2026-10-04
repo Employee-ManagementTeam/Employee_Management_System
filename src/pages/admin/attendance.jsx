@@ -1,537 +1,617 @@
-import { useEffect, useState } from "react";
+
+import { useEffect, useMemo, useState } from "react";
+import Sidebar from "../../components/sidebar";
+import Navbar from "../../components/navbar";
+
+import {
+  getAttendance,
+  getEmployees,
+  checkIn,
+  checkOut,
+} from "../../api/api";
 
 function Attendance() {
   const [employees, setEmployees] = useState([]);
-  const [search, setSearch] = useState("");
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+  const [attendance, setAttendance] = useState([]);
 
-  // Load employees
+  const [search, setSearch] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
+
+  const [employeeId, setEmployeeId] = useState("");
+
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  // Convert different backend response formats into an array
+  const getArray = (data, keys = []) => {
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    if (data && Array.isArray(data.data)) {
+      return data.data;
+    }
+
+    for (const key of keys) {
+      if (data && Array.isArray(data[key])) {
+        return data[key];
+      }
+    }
+
+    return [];
+  };
+
+  // Load employees and attendance
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const [employeesResponse, attendanceResponse] = await Promise.all([
+        getEmployees(),
+        getAttendance(),
+      ]);
+
+      const employeeList = getArray(employeesResponse, [
+        "employees",
+      ]);
+
+      const attendanceList = getArray(attendanceResponse, [
+        "attendance",
+        "records",
+      ]);
+
+      setEmployees(employeeList);
+      setAttendance(attendanceList);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Failed to load attendance data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    loadEmployees();
+    loadData();
   }, []);
 
-  const loadEmployees = () => {
-    const savedEmployees =
-      JSON.parse(localStorage.getItem("emsEmployees")) || [];
+  // Refresh attendance only
+  const refreshAttendance = async () => {
+    try {
+      const response = await getAttendance();
 
-    setEmployees(savedEmployees);
+      const attendanceList = getArray(response, [
+        "attendance",
+        "records",
+      ]);
+
+      setAttendance(attendanceList);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Failed to refresh attendance.");
+    }
   };
 
-  // Change attendance
-  const updateAttendance = (id, status) => {
-    const updatedEmployees = employees.map((employee) =>
-      employee.id === id
-        ? {
-            ...employee,
-            attendance: status,
-          }
-        : employee
-    );
+  // Check in
+  const handleCheckIn = async () => {
+    const id = employeeId.trim();
 
-    setEmployees(updatedEmployees);
+    if (!id) {
+      setError("Please enter an employee ID.");
+      setMessage("");
+      return;
+    }
 
-    localStorage.setItem(
-      "emsEmployees",
-      JSON.stringify(updatedEmployees)
-    );
+    try {
+      setActionLoading(true);
+      setError("");
+      setMessage("");
+
+      await checkIn(id);
+
+      setMessage(
+        "Employee " + id + " checked in successfully."
+      );
+
+      setEmployeeId("");
+
+      await refreshAttendance();
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Check-in failed.");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  // Search employees
-  const filteredEmployees = employees.filter((employee) => {
-    const text = search.toLowerCase();
+  // Check out
+  const handleCheckOut = async () => {
+    const id = employeeId.trim();
 
+    if (!id) {
+      setError("Please enter an employee ID.");
+      setMessage("");
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      setError("");
+      setMessage("");
+
+      await checkOut(id);
+
+      setMessage(
+        "Employee " + id + " checked out successfully."
+      );
+
+      setEmployeeId("");
+
+      await refreshAttendance();
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Check-out failed.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Get employee ID from different possible backend field names
+  const getEmployeeId = (employee) => {
     return (
-      employee.name.toLowerCase().includes(text) ||
-      employee.email.toLowerCase().includes(text) ||
-      employee.department.toLowerCase().includes(text)
+      employee.employee_id ||
+      employee.id ||
+      employee._id ||
+      employee.employee_code ||
+      ""
     );
-  });
+  };
 
-  const presentCount = employees.filter(
-    (employee) => employee.attendance === "Present"
-  ).length;
+  // Get employee name
+  const getEmployeeName = (employee) => {
+    if (employee.name) {
+      return employee.name;
+    }
 
-  const absentCount = employees.filter(
-    (employee) => employee.attendance === "Absent"
-  ).length;
+    const firstName = employee.first_name || "";
+    const lastName = employee.last_name || "";
 
-  const leaveCount = employees.filter(
-    (employee) => employee.attendance === "Leave"
-  ).length;
+    const fullName = (firstName + " " + lastName).trim();
+
+    if (fullName) {
+      return fullName;
+    }
+
+    return employee.username || "Unknown Employee";
+  };
+
+  // Get attendance employee ID
+  const getAttendanceEmployeeId = (record) => {
+    if (record.employee_id) {
+      return String(record.employee_id);
+    }
+
+    if (record.employeeId) {
+      return String(record.employeeId);
+    }
+
+    if (record.employee) {
+      if (typeof record.employee === "object") {
+        return String(
+          record.employee.employee_id ||
+            record.employee.id ||
+            record.employee._id ||
+            ""
+        );
+      }
+
+      return String(record.employee);
+    }
+
+    return "";
+  };
+
+  // Get attendance date
+  const getAttendanceDate = (record) => {
+    return (
+      record.date ||
+      record.attendance_date ||
+      record.check_in_date ||
+      record.created_at ||
+      record.createdAt ||
+      ""
+    );
+  };
+
+  // Get attendance status
+  const getAttendanceStatus = (record) => {
+    const status = String(record.status || "").toLowerCase();
+
+    if (status === "present") {
+      return "Present";
+    }
+
+    if (status === "absent") {
+      return "Absent";
+    }
+
+    if (status === "leave") {
+      return "Leave";
+    }
+
+    if (record.check_out || record.checkout_time) {
+      return "Checked Out";
+    }
+
+    if (record.check_in || record.checkin_time) {
+      return "Present";
+    }
+
+    return "Not Marked";
+  };
+
+  // Filter employees
+  const filteredEmployees = useMemo(() => {
+    return employees.filter((employee) => {
+      const id = String(getEmployeeId(employee)).toLowerCase();
+      const name = getEmployeeName(employee).toLowerCase();
+
+      const searchValue = search.toLowerCase().trim();
+
+      const matchesSearch =
+        !searchValue ||
+        id.includes(searchValue) ||
+        name.includes(searchValue);
+
+      return matchesSearch;
+    });
+  }, [employees, search]);
+
+  // Find attendance record for employee
+  const getEmployeeAttendance = (employee) => {
+    const id = String(getEmployeeId(employee));
+
+    let records = attendance.filter((record) => {
+      return getAttendanceEmployeeId(record) === id;
+    });
+
+    if (selectedDate) {
+      records = records.filter((record) => {
+        const recordDate = getAttendanceDate(record);
+
+        if (!recordDate) {
+          return false;
+        }
+
+        return String(recordDate).startsWith(selectedDate);
+      });
+    }
+
+    if (records.length === 0) {
+      return null;
+    }
+
+    return records[records.length - 1];
+  };
+
+  // Summary calculations
+  const presentCount = employees.filter((employee) => {
+    const record = getEmployeeAttendance(employee);
+
+    if (!record) {
+      return false;
+    }
+
+    const status = getAttendanceStatus(record);
+
+    return status === "Present";
+  }).length;
+
+  const checkedOutCount = employees.filter((employee) => {
+    const record = getEmployeeAttendance(employee);
+
+    if (!record) {
+      return false;
+    }
+
+    return getAttendanceStatus(record) === "Checked Out";
+  }).length;
+
+  const notMarkedCount =
+    employees.length - presentCount - checkedOutCount;
 
   return (
-    <div style={styles.page}>
+    <div className="min-h-screen bg-gray-100">
+      <Sidebar />
 
-      {/* HEADER */}
+      <Navbar />
 
-      <div style={styles.header}>
+      <main className="ml-64 pt-20 min-h-screen">
+        <div className="p-6">
+          {/* Header */}
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-800">
+              Attendance Management
+            </h1>
 
-        <div>
-          <h1 style={styles.title}>
-            Attendance
-          </h1>
+            <p className="mt-1 text-gray-500">
+              Track employee check-in and check-out records
+            </p>
+          </div>
 
-          <p style={styles.subtitle}>
-            Manage daily employee attendance
-          </p>
-        </div>
+          {/* Messages */}
+          {message && (
+            <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-700">
+              {message}
+            </div>
+          )}
 
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={(e) =>
-            setSelectedDate(e.target.value)
-          }
-          style={styles.dateInput}
-        />
+          {error && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+              {error}
+            </div>
+          )}
 
-      </div>
+          {/* Summary Cards */}
+          <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-4">
+            <div className="rounded-xl bg-white p-5 shadow-sm">
+              <p className="text-sm font-medium text-gray-500">
+                Total Employees
+              </p>
 
-
-      {/* SUMMARY */}
-
-      <div style={styles.summaryGrid}>
-
-        <SummaryCard
-          title="Total Employees"
-          value={employees.length}
-          icon="👥"
-        />
-
-        <SummaryCard
-          title="Present"
-          value={presentCount}
-          icon="✅"
-        />
-
-        <SummaryCard
-          title="Absent"
-          value={absentCount}
-          icon="❌"
-        />
-
-        <SummaryCard
-          title="On Leave"
-          value={leaveCount}
-          icon="📅"
-        />
-
-      </div>
-
-
-      {/* SEARCH */}
-
-      <div style={styles.searchContainer}>
-
-        <input
-          type="text"
-          placeholder="Search employee..."
-          value={search}
-          onChange={(e) =>
-            setSearch(e.target.value)
-          }
-          style={styles.search}
-        />
-
-        <span style={styles.count}>
-          {filteredEmployees.length} Employees
-        </span>
-
-      </div>
-
-
-      {/* TABLE */}
-
-      <div style={styles.tableCard}>
-
-        {filteredEmployees.length === 0 ? (
-
-          <div style={styles.empty}>
-
-            <div style={styles.emptyIcon}>
-              🕐
+              <h2 className="mt-2 text-3xl font-bold text-orange-600">
+                {employees.length}
+              </h2>
             </div>
 
-            <h3>
-              No employees found
-            </h3>
+            <div className="rounded-xl bg-white p-5 shadow-sm">
+              <p className="text-sm font-medium text-gray-500">
+                Present
+              </p>
 
-            <p>
-              Add employees first from the
-              Employees page.
-            </p>
+              <h2 className="mt-2 text-3xl font-bold text-green-600">
+                {presentCount}
+              </h2>
+            </div>
 
+            <div className="rounded-xl bg-white p-5 shadow-sm">
+              <p className="text-sm font-medium text-gray-500">
+                Checked Out
+              </p>
+
+              <h2 className="mt-2 text-3xl font-bold text-blue-600">
+                {checkedOutCount}
+              </h2>
+            </div>
+
+            <div className="rounded-xl bg-white p-5 shadow-sm">
+              <p className="text-sm font-medium text-gray-500">
+                Not Marked
+              </p>
+
+              <h2 className="mt-2 text-3xl font-bold text-gray-600">
+                {notMarkedCount}
+              </h2>
+            </div>
           </div>
 
-        ) : (
+          {/* Manual Check In / Check Out */}
+          <div className="mb-6 rounded-xl bg-white p-6 shadow-sm">
+            <div className="mb-4">
+              <h2 className="text-xl font-bold text-gray-800">
+                Mark Attendance
+              </h2>
 
-          <div style={styles.tableWrapper}>
+              <p className="mt-1 text-sm text-gray-500">
+                Enter the employee ID to check in or check out.
+              </p>
+            </div>
 
-            <table style={styles.table}>
+            <div className="flex flex-col gap-3 md:flex-row">
+              <input
+                type="text"
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+                placeholder="Enter Employee ID"
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-3 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+              />
 
-              <thead>
+              <button
+                onClick={handleCheckIn}
+                disabled={actionLoading}
+                className="rounded-lg bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {actionLoading ? "Processing..." : "Check In"}
+              </button>
 
-                <tr>
+              <button
+                onClick={handleCheckOut}
+                disabled={actionLoading}
+                className="rounded-lg bg-gray-800 px-6 py-3 font-semibold text-white transition hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {actionLoading ? "Processing..." : "Check Out"}
+              </button>
 
-                  <th style={styles.th}>
-                    Employee
-                  </th>
+              <button
+                onClick={loadData}
+                disabled={loading}
+                className="rounded-lg border border-orange-500 px-6 py-3 font-semibold text-orange-600 transition hover:bg-orange-50 disabled:opacity-60"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
 
-                  <th style={styles.th}>
-                    Department
-                  </th>
+          {/* Search and Date */}
+          <div className="mb-6 rounded-xl bg-white p-5 shadow-sm">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Search Employee
+                </label>
 
-                  <th style={styles.th}>
-                    Designation
-                  </th>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search by employee ID or name"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                />
+              </div>
 
-                  <th style={styles.th}>
-                    Attendance
-                  </th>
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Attendance Date
+                </label>
 
-                  <th style={styles.th}>
-                    Action
-                  </th>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                />
+              </div>
+            </div>
+          </div>
 
-                </tr>
+          {/* Attendance Table */}
+          <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+            <div className="border-b border-gray-200 px-6 py-5">
+              <h2 className="text-xl font-bold text-gray-800">
+                Employee Attendance
+              </h2>
+            </div>
 
-              </thead>
+            {loading ? (
+              <div className="p-10 text-center text-gray-500">
+                Loading attendance...
+              </div>
+            ) : filteredEmployees.length === 0 ? (
+              <div className="p-10 text-center text-gray-500">
+                No employees found.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-orange-50 text-left">
+                      <th className="px-6 py-4 text-sm font-bold text-gray-700">
+                        Employee ID
+                      </th>
 
-              <tbody>
+                      <th className="px-6 py-4 text-sm font-bold text-gray-700">
+                        Employee Name
+                      </th>
 
-                {filteredEmployees.map(
-                  (employee) => (
+                      <th className="px-6 py-4 text-sm font-bold text-gray-700">
+                        Department
+                      </th>
 
-                    <tr key={employee.id}>
+                      <th className="px-6 py-4 text-sm font-bold text-gray-700">
+                        Check In
+                      </th>
 
-                      <td style={styles.td}>
+                      <th className="px-6 py-4 text-sm font-bold text-gray-700">
+                        Check Out
+                      </th>
 
-                        <strong>
-                          {employee.name}
-                        </strong>
-
-                        <div style={styles.email}>
-                          {employee.email}
-                        </div>
-
-                      </td>
-
-                      <td style={styles.td}>
-                        {employee.department}
-                      </td>
-
-                      <td style={styles.td}>
-                        {employee.designation}
-                      </td>
-
-                      <td style={styles.td}>
-
-                        <span
-                          style={{
-                            ...styles.status,
-                            background:
-                              employee.attendance ===
-                              "Present"
-                                ? "#dcfce7"
-                                : employee.attendance ===
-                                  "Absent"
-                                ? "#fee2e2"
-                                : "#fef3c7",
-
-                            color:
-                              employee.attendance ===
-                              "Present"
-                                ? "#166534"
-                                : employee.attendance ===
-                                  "Absent"
-                                ? "#991b1b"
-                                : "#92400e",
-                          }}
-                        >
-                          {employee.attendance ||
-                            "Not Marked"}
-                        </span>
-
-                      </td>
-
-                      <td style={styles.td}>
-
-                        <button
-                          style={styles.presentButton}
-                          onClick={() =>
-                            updateAttendance(
-                              employee.id,
-                              "Present"
-                            )
-                          }
-                        >
-                          Present
-                        </button>
-
-                        <button
-                          style={styles.absentButton}
-                          onClick={() =>
-                            updateAttendance(
-                              employee.id,
-                              "Absent"
-                            )
-                          }
-                        >
-                          Absent
-                        </button>
-
-                        <button
-                          style={styles.leaveButton}
-                          onClick={() =>
-                            updateAttendance(
-                              employee.id,
-                              "Leave"
-                            )
-                          }
-                        >
-                          Leave
-                        </button>
-
-                      </td>
-
+                      <th className="px-6 py-4 text-sm font-bold text-gray-700">
+                        Status
+                      </th>
                     </tr>
+                  </thead>
 
-                  )
-                )}
+                  <tbody>
+                    {filteredEmployees.map((employee) => {
+                      const record =
+                        getEmployeeAttendance(employee);
 
-              </tbody>
+                      const status = record
+                        ? getAttendanceStatus(record)
+                        : "Not Marked";
 
-            </table>
+                      const checkInTime =
+                        record?.check_in ||
+                        record?.checkin_time ||
+                        record?.check_in_time ||
+                        "-";
 
+                      const checkOutTime =
+                        record?.check_out ||
+                        record?.checkout_time ||
+                        record?.check_out_time ||
+                        "-";
+
+                      let statusClass =
+                        "bg-gray-100 text-gray-600";
+
+                      if (status === "Present") {
+                        statusClass =
+                          "bg-green-100 text-green-700";
+                      } else if (status === "Checked Out") {
+                        statusClass =
+                          "bg-blue-100 text-blue-700";
+                      } else if (status === "Leave") {
+                        statusClass =
+                          "bg-yellow-100 text-yellow-700";
+                      } else if (status === "Absent") {
+                        statusClass =
+                          "bg-red-100 text-red-700";
+                      }
+
+                      return (
+                        <tr
+                          key={String(
+                            getEmployeeId(employee)
+                          )}
+                          className="border-t border-gray-100 hover:bg-orange-50"
+                        >
+                          <td className="px-6 py-4 font-semibold text-gray-800">
+                            {getEmployeeId(employee) || "-"}
+                          </td>
+
+                          <td className="px-6 py-4 text-gray-700">
+                            {getEmployeeName(employee)}
+                          </td>
+
+                          <td className="px-6 py-4 text-gray-600">
+                            {employee.department || "-"}
+                          </td>
+
+                          <td className="px-6 py-4 text-gray-600">
+                            {checkInTime}
+                          </td>
+
+                          <td className="px-6 py-4 text-gray-600">
+                            {checkOutTime}
+                          </td>
+
+                          <td className="px-6 py-4">
+                            <span
+                              className={
+                                "inline-flex rounded-full px-3 py-1 text-xs font-bold " +
+                                statusClass
+                              }
+                            >
+                              {status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-
-        )}
-
-      </div>
-
+        </div>
+      </main>
     </div>
   );
 }
-
-
-/* SUMMARY CARD */
-
-function SummaryCard({
-  title,
-  value,
-  icon,
-}) {
-  return (
-    <div style={styles.summaryCard}>
-
-      <div>
-
-        <p style={styles.summaryTitle}>
-          {title}
-        </p>
-
-        <h2 style={styles.summaryValue}>
-          {value}
-        </h2>
-
-      </div>
-
-      <div style={styles.summaryIcon}>
-        {icon}
-      </div>
-
-    </div>
-  );
-}
-
-
-/* STYLES */
-
-const styles = {
-
-  page: {
-    padding: "30px",
-    background: "#f5f7fb",
-    minHeight: "calc(100vh - 80px)",
-  },
-
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "25px",
-  },
-
-  title: {
-    margin: 0,
-    fontSize: "26px",
-    color: "#111827",
-  },
-
-  subtitle: {
-    margin: "5px 0 0",
-    color: "#6b7280",
-    fontSize: "14px",
-  },
-
-  dateInput: {
-    padding: "10px 12px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-    background: "white",
-    fontSize: "14px",
-  },
-
-  summaryGrid: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(4, 1fr)",
-    gap: "18px",
-    marginBottom: "25px",
-  },
-
-  summaryCard: {
-    background: "white",
-    padding: "20px",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  summaryTitle: {
-    margin: 0,
-    color: "#6b7280",
-    fontSize: "13px",
-  },
-
-  summaryValue: {
-    margin: "7px 0 0",
-    fontSize: "26px",
-    color: "#111827",
-  },
-
-  summaryIcon: {
-    fontSize: "25px",
-    width: "45px",
-    height: "45px",
-    borderRadius: "10px",
-    background: "#eff6ff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  searchContainer: {
-    background: "white",
-    padding: "18px",
-    borderRadius: "10px",
-    marginBottom: "20px",
-    border: "1px solid #e5e7eb",
-    display: "flex",
-    alignItems: "center",
-    gap: "15px",
-  },
-
-  search: {
-    flex: 1,
-    padding: "11px 14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "7px",
-    fontSize: "14px",
-  },
-
-  count: {
-    color: "#6b7280",
-    fontSize: "13px",
-  },
-
-  tableCard: {
-    background: "white",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-    overflow: "hidden",
-  },
-
-  tableWrapper: {
-    overflowX: "auto",
-  },
-
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-
-  th: {
-    textAlign: "left",
-    padding: "15px",
-    background: "#f9fafb",
-    color: "#374151",
-    fontSize: "13px",
-    borderBottom: "1px solid #e5e7eb",
-  },
-
-  td: {
-    padding: "15px",
-    borderBottom: "1px solid #f1f5f9",
-    color: "#4b5563",
-    fontSize: "13px",
-  },
-
-  email: {
-    marginTop: "4px",
-    color: "#9ca3af",
-    fontSize: "11px",
-  },
-
-  status: {
-    padding: "5px 9px",
-    borderRadius: "20px",
-    fontSize: "11px",
-    fontWeight: "bold",
-  },
-
-  presentButton: {
-    background: "#dcfce7",
-    color: "#166534",
-    border: "none",
-    padding: "7px 9px",
-    borderRadius: "5px",
-    cursor: "pointer",
-    marginRight: "5px",
-  },
-
-  absentButton: {
-    background: "#fee2e2",
-    color: "#991b1b",
-    border: "none",
-    padding: "7px 9px",
-    borderRadius: "5px",
-    cursor: "pointer",
-    marginRight: "5px",
-  },
-
-  leaveButton: {
-    background: "#fef3c7",
-    color: "#92400e",
-    border: "none",
-    padding: "7px 9px",
-    borderRadius: "5px",
-    cursor: "pointer",
-  },
-
-  empty: {
-    textAlign: "center",
-    padding: "70px 20px",
-    color: "#6b7280",
-  },
-
-  emptyIcon: {
-    fontSize: "45px",
-  },
-};
 
 export default Attendance;
+

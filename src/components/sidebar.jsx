@@ -1,147 +1,76 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { getCurrentUser, logoutUser } from "../api/auth";
 
 function Sidebar() {
   const navigate = useNavigate();
-  const user = getCurrentUser();
-
-  const role = String(user.role || "").toLowerCase();
 
   const menuItems = [
-    {
-      name: "Dashboard",
-      path: "/dashboard",
-      roles: ["admin", "manager", "employee"],
-    },
-    {
-      name: "Employees",
-      path: "/employees",
-      roles: ["admin", "manager", "employee"],
-    },
-    {
-      name: "Departments",
-      path: "/departments",
-      roles: ["admin", "manager"],
-    },
-    {
-      name: "Attendance",
-      path: "/attendance",
-      roles: ["admin", "manager", "employee"],
-    },
-    {
-      name: "Leaves",
-      path: "/leaves",
-      roles: ["admin", "manager", "employee"],
-    },
-    {
-      name: "Tasks",
-      path: "/tasks",
-      roles: ["admin", "manager", "employee"],
-    },
-    {
-      name: "Performance",
-      path: "/performance",
-      roles: ["admin", "manager", "employee"],
-    },
-    {
-      name: "Documents",
-      path: "/documents",
-      roles: ["admin", "manager", "employee"],
-    },
-    {
-      name: "Salary",
-      path: "/salary",
-      roles: ["admin"],
-    },
-    {
-      name: "Payroll",
-      path: "/payroll",
-      roles: ["admin", "employee"],
-    },
-    {
-      name: "Notifications",
-      path: "/notifications",
-      roles: ["admin", "manager", "employee"],
-    },
-    {
-      name: "Reports",
-      path: "/reports",
-      roles: ["admin", "manager"],
-    },
-    {
-      name: "Activity Logs",
-      path: "/activity-logs",
-      roles: ["admin", "manager", "employee"],
-    },
+    { name: "Dashboard", path: "/admin/dashboard" },
+    { name: "Employees", path: "/admin/employees" },
+    { name: "Departments", path: "/admin/department" },
+    { name: "Attendance", path: "/admin/attendance" },
+    { name: "Leave", path: "/admin/leave" },
+    { name: "Tasks", path: "/admin/tasks" },
+    { name: "Performance", path: "/admin/performance" },
+    { name: "Documents", path: "/admin/documents" },
+    { name: "Salary", path: "/admin/salary" },
+    { name: "Payroll", path: "/admin/payroll" },
+    { name: "Notifications", path: "/admin/notifications" },
+    { name: "Reports", path: "/admin/reports" },
+    { name: "Activity Logs", path: "/admin/activitylogs" },
   ];
 
-  const visibleItems = menuItems.filter((item) =>
-    item.roles.includes(role)
-  );
-
-  function handleLogout() {
-    logoutUser();
+  const handleLogout = () => {
+    localStorage.removeItem("userId");
+    localStorage.removeItem("username");
+    localStorage.removeItem("email");
+    localStorage.removeItem("role");
     navigate("/login");
-  }
+  };
 
   return (
-    <aside className="w-64 min-h-screen bg-slate-900 text-white flex flex-col">
+    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-white border-r border-gray-200 shadow-sm">
+      <div className="flex h-full flex-col">
 
-      <div className="p-6 border-b border-slate-700">
-        <h1 className="text-2xl font-bold">
-          EMS
-        </h1>
+        {/* Logo */}
+        <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
+           <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-sm">S</div>
+           <div>
+            <h1 className="text-[13px] font-bold leading-tight text-slate-900 tracking-wide">SHNOOR INTE...</h1>
+            <p className="text-[11px] text-gray-400">Connecting Tech...</p>
+           </div>
+        </div>
 
-        <p className="text-sm text-slate-400 mt-1">
-          Employee Management
-        </p>
-      </div>
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
+          <div className="space-y-1">
+            {menuItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  `flex items-center rounded-lg px-4 py-2.5 text-[14px] font-medium transition-all ${
+                    isActive
+                     ? "bg-[#FFF8E7] text-[#B7792B]"
+                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                  }`
+                }
+              >
+                {item.name}
+              </NavLink>
+            ))}
+          </div>
+        </nav>
 
-      <div className="p-5 border-b border-slate-700">
-
-        <p className="font-semibold">
-          {user.username || "User"}
-        </p>
-
-        <p className="text-sm text-slate-400 capitalize mt-1">
-          {role || "employee"}
-        </p>
-
-      </div>
-
-      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-
-        {visibleItems.map((item) => (
-
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              `block px-4 py-3 rounded-lg transition ${
-                isActive
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-300 hover:bg-slate-800"
-              }`
-            }
+        {/* Logout */}
+        <div className="border-t border-gray-100 p-3">
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center rounded-lg px-4 py-2.5 text-[14px] font-semibold text-red-500 hover:bg-red-50 transition"
           >
-            {item.name}
-          </NavLink>
-
-        ))}
-
-      </nav>
-
-      <div className="p-4 border-t border-slate-700">
-
-        <button
-          onClick={handleLogout}
-          className="w-full bg-red-600 hover:bg-red-700 py-3 rounded-lg"
-        >
-          Logout
-        </button>
-
+            Logout
+          </button>
+        </div>
       </div>
-
     </aside>
   );
 }

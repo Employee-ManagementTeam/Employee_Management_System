@@ -1,168 +1,132 @@
 import { useEffect, useState } from "react";
+import EmployeeSidebar from "../../components/EmployeeSidebar";
+import Navbar from "../../components/navbar";
+import { getPayroll } from "../../api/api";
 
 function Payroll() {
   const [payroll, setPayroll] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadPayroll();
   }, []);
 
-  const loadPayroll = () => {
-    const email = localStorage.getItem("email");
+  const loadPayroll = async () => {
+    try {
+      const response = await getPayroll();
 
-    const employees =
-      JSON.parse(localStorage.getItem("emsEmployees")) || [];
+      const records =
+        Array.isArray(response)
+          ? response
+          : response.payroll ||
+            response.data ||
+            [];
 
-    const employee = employees.find(
-      (item) => item.email === email
-    );
+      const userId = localStorage.getItem("userId");
 
-    const name =
-      employee?.name ||
-      localStorage.getItem("username") ||
-      "Employee";
+      const filtered = records.filter(
+        (item) =>
+          String(item.user_id) === String(userId) ||
+          String(item.employee_user_id) === String(userId)
+      );
 
-    const saved =
-      JSON.parse(localStorage.getItem("emsPayroll")) || [];
-
-    setPayroll(
-      saved.filter(
-        (item) => item.employee === name
-      )
-    );
+      setPayroll(filtered.length ? filtered : records);
+    } catch (err) {
+      setError(
+        err.message || "Failed to load payroll."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const total = payroll.reduce(
-    (sum, item) =>
-      sum + Number(item.netSalary || 0),
-    0
-  );
-
   return (
-    <div style={styles.page}>
+    <div className="min-h-screen bg-gray-100">
+      <EmployeeSidebar />
+      <Navbar />
 
-      <h1>My Payroll</h1>
+      <main className="ml-64 pt-20">
+        <div className="p-6">
 
-      <p style={styles.subtitle}>
-        View your salary records
-      </p>
+          <h1 className="text-3xl font-bold text-gray-800">
+            Payroll
+          </h1>
 
-      <div style={styles.summary}>
-        <p>Total Net Salary Records</p>
-        <h2>₹{total.toLocaleString()}</h2>
-      </div>
-
-      <div style={styles.tableCard}>
-
-        <table style={styles.table}>
-
-          <thead>
-            <tr>
-              <th style={styles.th}>Month</th>
-              <th style={styles.th}>Basic Salary</th>
-              <th style={styles.th}>Allowances</th>
-              <th style={styles.th}>Deductions</th>
-              <th style={styles.th}>Net Salary</th>
-              <th style={styles.th}>Status</th>
-            </tr>
-          </thead>
-
-          <tbody>
-
-            {payroll.map((item) => (
-              <tr key={item.id}>
-
-                <td style={styles.td}>
-                  {item.month}
-                </td>
-
-                <td style={styles.td}>
-                  ₹{Number(item.basicSalary).toLocaleString()}
-                </td>
-
-                <td style={styles.td}>
-                  ₹{Number(item.allowances).toLocaleString()}
-                </td>
-
-                <td style={styles.td}>
-                  ₹{Number(item.deductions).toLocaleString()}
-                </td>
-
-                <td style={styles.td}>
-                  ₹{Number(item.netSalary).toLocaleString()}
-                </td>
-
-                <td style={styles.td}>
-                  {item.status}
-                </td>
-
-              </tr>
-            ))}
-
-          </tbody>
-
-        </table>
-
-        {payroll.length === 0 && (
-          <p style={styles.empty}>
-            No payroll records available.
+          <p className="mt-1 text-gray-500">
+            Your payroll records.
           </p>
-        )}
 
-      </div>
+          {error && (
+            <div className="mt-5 rounded-xl bg-red-50 p-4 text-red-700">
+              {error}
+            </div>
+          )}
 
+          {loading ? (
+            <p className="mt-6 text-gray-500">
+              Loading payroll...
+            </p>
+          ) : payroll.length === 0 ? (
+            <div className="mt-6 rounded-2xl bg-white p-8 text-center shadow-sm">
+              <p className="text-gray-500">
+                No payroll records found.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 overflow-x-auto rounded-2xl bg-white p-6 shadow-sm">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b text-left text-sm text-gray-500">
+                    <th className="p-3">Period</th>
+                    <th className="p-3">Basic Salary</th>
+                    <th className="p-3">Gross Salary</th>
+                    <th className="p-3">Net Salary</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {payroll.map((record) => (
+                    <tr
+                      key={
+                        record.id ||
+                        record.payroll_id ||
+                        record._id
+                      }
+                      className="border-b"
+                    >
+                      <td className="p-3">
+                        {record.month ||
+                          record.period ||
+                          record.pay_period ||
+                          "Not provided"}
+                      </td>
+
+                      <td className="p-3">
+                        {record.basic_salary ??
+                          "Not provided"}
+                      </td>
+
+                      <td className="p-3">
+                        {record.gross_salary ??
+                          "Not provided"}
+                      </td>
+
+                      <td className="p-3 font-semibold text-orange-600">
+                        {record.net_salary ??
+                          "Not provided"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+        </div>
+      </main>
     </div>
   );
 }
-
-const styles = {
-  page: {
-    padding: "30px",
-    minHeight: "100vh",
-    background: "#f5f7fb",
-    fontFamily: "Arial, sans-serif",
-  },
-
-  subtitle: {
-    color: "#6b7280",
-  },
-
-  summary: {
-    background: "white",
-    padding: "20px",
-    margin: "25px 0",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-    maxWidth: "350px",
-  },
-
-  tableCard: {
-    background: "white",
-    padding: "20px",
-    borderRadius: "10px",
-    border: "1px solid #e5e7eb",
-    overflow: "auto",
-  },
-
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-
-  th: {
-    padding: "13px",
-    textAlign: "left",
-    background: "#f9fafb",
-  },
-
-  td: {
-    padding: "13px",
-    borderTop: "1px solid #e5e7eb",
-  },
-
-  empty: {
-    color: "#6b7280",
-  },
-};
 
 export default Payroll;

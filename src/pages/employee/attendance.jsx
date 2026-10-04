@@ -1,16 +1,24 @@
 import { useEffect, useState } from "react";
 import { Html5QrcodeScanner } from "html5-qrcode";
+import EmployeeSidebar from "../../components/EmployeeSidebar";
+import Navbar from "../../components/navbar";
+
+const API_BASE_URL = "http://127.0.0.1:5000";
 
 function Attendance() {
   const [scanResult, setScanResult] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  const [checkedIn, setCheckedIn] = useState(false);
+  const [checkedOut, setCheckedOut] = useState(false);
+
+  const [checkInTime, setCheckInTime] = useState("");
+  const [checkOutTime, setCheckOutTime] = useState("");
+
   const [loading, setLoading] = useState(false);
-  const [scanMode, setScanMode] = useState("");
 
-  const API_BASE_URL = "http://127.0.0.1:5000";
-
-  // Start QR Scanner
+  // QR SCANNER
   useEffect(() => {
     const scanner = new Html5QrcodeScanner(
       "qr-reader",
@@ -40,188 +48,309 @@ function Attendance() {
     };
   }, []);
 
-  // Check In
+  // CHECK IN
   const handleCheckIn = async () => {
     if (!scanResult) {
-      setError("Please scan a QR code first.");
+      setError("Please scan the employee QR code first.");
+      setMessage("");
       return;
     }
 
-    try {
-      setLoading(true);
+    const userId = localStorage.getItem("userId");
+
+    if (!userId) {
+      setError("User ID not found. Please login again.");
       setMessage("");
-      setError("");
+      return;
+    }
 
-      const userId = localStorage.getItem("userId");
+    setLoading(true);
+    setError("");
+    setMessage("");
 
-const response = await fetch(`${API_BASE_URL}/api/attendance/qr-check-in`, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "X-User-ID": userId,
-  },
-  body: JSON.stringify({
-    employee_id: scanResult,
-  }),
-});
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/attendance/qr-check-in`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-ID": userId,
+          },
+          body: JSON.stringify({
+            employee_id: scanResult,
+          }),
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Check-in failed.");
+        throw new Error(
+          data.message || data.error || "Check-in failed."
+        );
       }
 
-      setMessage(data.message || "Attendance checked in successfully.");
-      setScanMode("check-in");
+      const currentTime = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      setCheckedIn(true);
+      setCheckedOut(false);
+      setCheckInTime(currentTime);
+
+      setMessage(
+        data.message || "Attendance check-in successful."
+      );
     } catch (err) {
-      setError(err.message || "Something went wrong.");
+      setError(err.message || "Failed to connect to backend.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Check Out
+  // CHECK OUT
   const handleCheckOut = async () => {
     if (!scanResult) {
-      setError("Please scan a QR code first.");
+      setError("Please scan the employee QR code first.");
+      setMessage("");
       return;
     }
 
-    try {
-      setLoading(true);
+    const userId = localStorage.getItem("userId");
+
+    if (!userId) {
+      setError("User ID not found. Please login again.");
       setMessage("");
-      setError("");
+      return;
+    }
 
-      const userId = localStorage.getItem("userId");
+    setLoading(true);
+    setError("");
+    setMessage("");
 
-const response = await fetch(`${API_BASE_URL}/api/attendance/qr-check-out`, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "X-User-ID": userId,
-  },
-  body: JSON.stringify({
-    employee_id: scanResult,
-  }),
-});
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/attendance/qr-check-out`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-ID": userId,
+          },
+          body: JSON.stringify({
+            employee_id: scanResult,
+          }),
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Check-out failed.");
+        throw new Error(
+          data.message || data.error || "Check-out failed."
+        );
       }
 
-      setMessage(data.message || "Attendance checked out successfully.");
-      setScanMode("check-out");
+      const currentTime = new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      setCheckedOut(true);
+      setCheckOutTime(currentTime);
+
+      setMessage(
+        data.message || "Attendance check-out successful."
+      );
     } catch (err) {
-      setError(err.message || "Something went wrong.");
+      setError(err.message || "Failed to connect to backend.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-100">
+      <EmployeeSidebar />
+      <Navbar />
 
-        {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">
-            Employee Attendance
-          </h1>
+      <main className="ml-64 pt-20">
+        <div className="p-6">
 
-          <p className="text-gray-500 mt-1">
-            Scan the QR code to mark your attendance.
-          </p>
-        </div>
+          {/* HEADER */}
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-800">
+              Employee Attendance
+            </h1>
 
-        {/* Attendance Card */}
-        <div className="bg-white rounded-xl shadow-md p-6">
-
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">
-            QR Attendance Scanner
-          </h2>
-
-          {/* QR Scanner */}
-          <div className="flex justify-center mb-6">
-            <div
-              id="qr-reader"
-              className="w-full max-w-md"
-            ></div>
+            <p className="mt-1 text-gray-500">
+              Scan your employee QR code to mark attendance.
+            </p>
           </div>
 
-          {/* Scanned Result */}
-          {scanResult && (
-            <div className="bg-gray-50 border rounded-lg p-4 mb-5">
-              <p className="text-sm text-gray-500 mb-1">
-                Scanned QR Data
+          {/* STATUS CARDS */}
+          <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-3">
+
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <p className="text-sm font-medium text-gray-500">
+                Today's Status
               </p>
 
-              <p className="text-gray-800 font-medium break-all">
-                {scanResult}
-              </p>
+              <h2 className="mt-2 text-2xl font-bold text-orange-600">
+                {checkedOut
+                  ? "Completed"
+                  : checkedIn
+                  ? "Working"
+                  : "Not Marked"}
+              </h2>
             </div>
-          )}
 
-          {/* Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <p className="text-sm font-medium text-gray-500">
+                Check In
+              </p>
 
-            <button
-              onClick={handleCheckIn}
-              disabled={loading || !scanResult}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition"
-            >
-              {loading && scanMode !== "check-out"
-                ? "Checking In..."
-                : "Check In"}
-            </button>
+              <h2 className="mt-2 text-2xl font-bold text-green-600">
+                {checkInTime || "--:--"}
+              </h2>
+            </div>
 
-            <button
-              onClick={handleCheckOut}
-              disabled={loading || !scanResult}
-              className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition"
-            >
-              {loading && scanMode === "check-out"
-                ? "Checking Out..."
-                : "Check Out"}
-            </button>
+            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <p className="text-sm font-medium text-gray-500">
+                Check Out
+              </p>
+
+              <h2 className="mt-2 text-2xl font-bold text-red-600">
+                {checkOutTime || "--:--"}
+              </h2>
+            </div>
 
           </div>
 
-          {/* Success Message */}
-          {message && (
-            <div className="mt-5 bg-green-100 border border-green-300 text-green-700 px-4 py-3 rounded-lg">
-              {message}
-            </div>
-          )}
+          {/* QR SCANNER */}
+          <div className="rounded-2xl bg-white p-6 shadow-sm">
 
-          {/* Error Message */}
-          {error && (
-            <div className="mt-5 bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-lg">
-              {error}
+            <h2 className="mb-2 text-xl font-bold text-gray-800">
+              QR Attendance Scanner
+            </h2>
+
+            <p className="mb-6 text-sm text-gray-500">
+              Scan the employee QR code using your camera.
+            </p>
+
+            <div className="mb-6 flex justify-center">
+              <div
+                id="qr-reader"
+                className="w-full max-w-md overflow-hidden rounded-xl border border-orange-200"
+              ></div>
             </div>
-          )}
+
+            {/* SCAN RESULT */}
+            {scanResult && (
+              <div className="mb-5 rounded-xl border border-orange-200 bg-orange-50 p-4">
+                <p className="text-sm text-gray-500">
+                  Employee ID
+                </p>
+
+                <p className="mt-1 text-lg font-bold text-orange-600">
+                  {scanResult}
+                </p>
+              </div>
+            )}
+
+            {/* BUTTONS */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+              <button
+                onClick={handleCheckIn}
+                disabled={loading || checkedIn}
+                className="rounded-xl bg-green-600 px-6 py-3 font-bold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+              >
+                {loading
+                  ? "Processing..."
+                  : checkedIn
+                  ? "Checked In ✓"
+                  : "Check In"}
+              </button>
+
+              <button
+                onClick={handleCheckOut}
+                disabled={loading || !checkedIn || checkedOut}
+                className="rounded-xl bg-red-600 px-6 py-3 font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+              >
+                {loading
+                  ? "Processing..."
+                  : checkedOut
+                  ? "Checked Out ✓"
+                  : "Check Out"}
+              </button>
+
+            </div>
+
+            {/* SUCCESS */}
+            {message && (
+              <div className="mt-5 rounded-xl border border-green-300 bg-green-50 px-4 py-3 font-medium text-green-700">
+                ✓ {message}
+              </div>
+            )}
+
+            {/* ERROR */}
+            {error && (
+              <div className="mt-5 rounded-xl border border-red-300 bg-red-50 px-4 py-3 font-medium text-red-700">
+                ⚠ {error}
+              </div>
+            )}
+
+          </div>
+
+          {/* INSTRUCTIONS */}
+          <div className="mt-6 rounded-2xl bg-white p-6 shadow-sm">
+
+            <h2 className="mb-4 text-xl font-bold text-gray-800">
+              How to Mark Attendance
+            </h2>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+
+              <div className="rounded-xl bg-orange-50 p-4">
+                <div className="text-2xl">📷</div>
+                <p className="mt-2 font-bold">1. Allow Camera</p>
+                <p className="text-sm text-gray-500">
+                  Allow camera permission.
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-orange-50 p-4">
+                <div className="text-2xl">🔳</div>
+                <p className="mt-2 font-bold">2. Scan QR</p>
+                <p className="text-sm text-gray-500">
+                  Scan your employee QR code.
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-green-50 p-4">
+                <div className="text-2xl">🟢</div>
+                <p className="mt-2 font-bold">3. Check In</p>
+                <p className="text-sm text-gray-500">
+                  Start your work attendance.
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-red-50 p-4">
+                <div className="text-2xl">🔴</div>
+                <p className="mt-2 font-bold">4. Check Out</p>
+                <p className="text-sm text-gray-500">
+                  End your work attendance.
+                </p>
+              </div>
+
+            </div>
+          </div>
 
         </div>
-
-        {/* Instructions */}
-        <div className="bg-white rounded-xl shadow-md p-6 mt-6">
-
-          <h2 className="text-lg font-semibold text-gray-800 mb-3">
-            How to use
-          </h2>
-
-          <ol className="list-decimal list-inside text-gray-600 space-y-2">
-            <li>Allow camera access when requested.</li>
-            <li>Point the camera at the employee QR code.</li>
-            <li>Wait until the QR code is detected.</li>
-            <li>Click <b>Check In</b> when starting work.</li>
-            <li>Click <b>Check Out</b> when leaving work.</li>
-          </ol>
-
-        </div>
-
-      </div>
+      </main>
     </div>
   );
 }
