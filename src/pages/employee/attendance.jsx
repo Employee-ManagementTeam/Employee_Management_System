@@ -52,18 +52,18 @@ function Attendance() {
       setMessage("");
       setError("");
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/attendance/qr-check-in`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            employee_id: scanResult,
-          }),
-        }
-      );
+      const userId = localStorage.getItem("userId");
+
+const response = await fetch(`${API_BASE_URL}/api/attendance/qr-check-in`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-User-ID": userId,
+  },
+  body: JSON.stringify({
+    employee_id: scanResult,
+  }),
+});
 
       const data = await response.json();
 
@@ -92,18 +92,18 @@ function Attendance() {
       setMessage("");
       setError("");
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/attendance/qr-check-out`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            employee_id: scanResult,
-          }),
-        }
-      );
+      const userId = localStorage.getItem("userId");
+
+const response = await fetch(`${API_BASE_URL}/api/attendance/qr-check-out`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-User-ID": userId,
+  },
+  body: JSON.stringify({
+    employee_id: scanResult,
+  }),
+});
 
       const data = await response.json();
 
