@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { loginUser } from "../../api/auth";
 
 
 function Login() {
@@ -9,37 +10,34 @@ function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleLogin = (e) => {
-    e.preventDefault();
+  const handleLogin = async (e) => {
+  e.preventDefault();
 
-    setError("");
+  setError("");
 
-    const users = JSON.parse(localStorage.getItem("emsUsers")) || [];
+  try {
+    const data = await loginUser(email, password);
 
-    const user = users.find(
-      (item) =>
-        item.email === email &&
-        item.password === password
-    );
-
-    if (!user) {
-      setError("Invalid email or password.");
+    if (!data.success || !data.user) {
+      setError(data.message || "Invalid email or password.");
       return;
     }
 
-    localStorage.setItem("userId", user.id);
-    localStorage.setItem("username", user.username);
-    localStorage.setItem("email", user.email);
-    localStorage.setItem("role", user.role);
+    const role = String(data.user.role || "").toLowerCase();
 
-    if (user.role === "Admin") {
+    if (role === "admin") {
       navigate("/admin/dashboard");
-    } else if (user.role === "Manager") {
+    } else if (role === "manager") {
       navigate("/manager/dashboard");
     } else {
       navigate("/employee/dashboard");
     }
-  };
+  } catch (err) {
+    setError(
+      err.message || "Unable to connect to the server."
+    );
+  }
+};
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-white">

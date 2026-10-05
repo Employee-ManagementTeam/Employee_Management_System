@@ -1,5 +1,4 @@
 const API_BASE_URL = "http://127.0.0.1:5000/api";
-
 const getUserId = () => localStorage.getItem("userId");
 
 const request = async (endpoint, options = {}) => {
@@ -339,5 +338,10 @@ export const createActivityLog = (activityData) =>
 /* =====================================================
    DEFAULT EXPORT
 ===================================================== */
+
+export {
+  API_BASE_URL,
+  request as apiRequest,
+};
 
 export default request;

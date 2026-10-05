@@ -1,7 +1,7 @@
 import { apiRequest } from "./api";
 
 export async function loginUser(email, password) {
-  const data = await apiRequest("/api/login", {
+  const data = await apiRequest("/login", {
     method: "POST",
     body: JSON.stringify({
       email,
@@ -25,7 +25,7 @@ export async function registerUser(
   password,
   role
 ) {
-  return await apiRequest("/api/register", {
+  return await apiRequest("/register", {
     method: "POST",
     body: JSON.stringify({
       username,

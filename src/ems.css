@@ -1,0 +1,369 @@
+/* =========================================================
+   EMS PROFESSIONAL UI THEME
+   Styling only
+========================================================= */
+
+:root {
+  --ems-primary: #b7792b;
+  --ems-primary-dark: #965f1f;
+  --ems-primary-soft: #fff8e7;
+
+  --ems-page: #f7f8fa;
+  --ems-white: #ffffff;
+  --ems-border: #e7e9ee;
+
+  --ems-text: #172033;
+  --ems-muted: #64748b;
+}
+
+/* =========================================================
+   PAGE
+========================================================= */
+
+.ems-page {
+  min-height: 100vh;
+  background: var(--ems-page);
+}
+
+/* =========================================================
+   SIDEBAR
+========================================================= */
+
+.ems-sidebar {
+  background: #ffffff;
+  border-right: 1px solid var(--ems-border);
+  box-shadow: 5px 0 20px rgba(15, 23, 42, 0.035);
+}
+
+.ems-sidebar-logo {
+  border-bottom: 1px solid var(--ems-border);
+}
+
+.ems-sidebar-logo h1 {
+  color: #172033;
+  letter-spacing: 0.02em;
+}
+
+.ems-sidebar-logo p {
+  color: #94a3b8;
+}
+
+.ems-sidebar-nav {
+  scrollbar-width: thin;
+  scrollbar-color: #d9dde5 transparent;
+}
+
+.ems-sidebar-link {
+  position: relative;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  color: #64748b;
+
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.ems-sidebar-link:hover {
+  background: #f8fafc;
+  color: #1f2937;
+  transform: translateX(2px);
+}
+
+.ems-sidebar-link.active {
+  background: var(--ems-primary-soft);
+  color: var(--ems-primary);
+}
+
+.ems-sidebar-link.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--ems-primary);
+}
+
+.ems-sidebar-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.ems-sidebar-logout {
+  border-top: 1px solid var(--ems-border);
+}
+
+.ems-sidebar-logout button {
+  transition:
+    background-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.ems-sidebar-logout button:hover {
+  transform: translateY(-1px);
+}
+
+/* =========================================================
+   NAVBAR
+========================================================= */
+
+.ems-navbar {
+  background: rgba(255, 255, 255, 0.97);
+  border-bottom: 1px solid var(--ems-border);
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.035);
+
+  backdrop-filter: blur(10px);
+}
+
+.ems-navbar-title {
+  color: #172033;
+  letter-spacing: -0.02em;
+}
+
+.ems-navbar-subtitle {
+  color: #94a3b8;
+}
+
+.ems-navbar-notification {
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.ems-navbar-notification:hover {
+  background: var(--ems-primary-soft);
+  color: var(--ems-primary);
+}
+
+.ems-avatar {
+  background: var(--ems-primary-soft);
+  color: var(--ems-primary);
+}
+
+/* =========================================================
+   MAIN CONTENT
+========================================================= */
+
+.ems-content {
+  min-height: 100vh;
+  background: var(--ems-page);
+}
+
+/* =========================================================
+   HEADINGS
+========================================================= */
+
+.ems-page-eyebrow {
+  color: var(--ems-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ems-page-title {
+  color: #111827;
+  letter-spacing: -0.03em;
+}
+
+.ems-page-description {
+  color: #64748b;
+}
+
+/* =========================================================
+   CARDS
+========================================================= */
+
+.ems-card {
+  border: 1px solid var(--ems-border);
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 7px 24px rgba(15, 23, 42, 0.04);
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.ems-card:hover {
+  border-color: #dfe3ea;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+/* =========================================================
+   STAT CARDS
+========================================================= */
+
+.ems-stat-card {
+  border: 1px solid var(--ems-border);
+  border-radius: 16px;
+  background: white;
+  padding: 1.4rem;
+
+  box-shadow: 0 7px 24px rgba(15, 23, 42, 0.04);
+
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.ems-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: #dfe3ea;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.07);
+}
+
+.ems-stat-icon {
+  display: flex;
+  width: 46px;
+  height: 46px;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+  background: var(--ems-primary-soft);
+  color: var(--ems-primary);
+}
+
+/* =========================================================
+   TABLES
+========================================================= */
+
+.ems-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.ems-table th {
+  background: #f8fafc;
+  color: #64748b;
+
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+
+  white-space: nowrap;
+}
+
+.ems-table td {
+  color: #374151;
+}
+
+.ems-table tbody tr {
+  transition: background-color 0.18s ease;
+}
+
+.ems-table tbody tr:hover {
+  background: #fafafa;
+}
+
+/* =========================================================
+   INPUTS
+========================================================= */
+
+.ems-input,
+.ems-select,
+.ems-textarea {
+  width: 100%;
+  border: 1px solid #dfe3e8;
+  border-radius: 11px;
+
+  background: white;
+  color: #1f2937;
+
+  outline: none;
+
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.ems-input:focus,
+.ems-select:focus,
+.ems-textarea:focus {
+  border-color: #d19a51;
+  box-shadow: 0 0 0 4px rgba(183, 121, 43, 0.11);
+}
+
+/* =========================================================
+   PRIMARY BUTTON
+========================================================= */
+
+.ems-primary-button {
+  border-radius: 10px;
+  background: var(--ems-primary);
+  color: white;
+
+  transition:
+    background-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.ems-primary-button:hover {
+  background: var(--ems-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 7px 18px rgba(183, 121, 43, 0.17);
+}
+
+/* =========================================================
+   STATUS BADGES
+========================================================= */
+
+.ems-status {
+  display: inline-flex;
+  align-items: center;
+
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ems-status-pending {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.ems-status-approved {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.ems-status-rejected {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.ems-status-active {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.ems-status-completed {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 900px) {
+  .ems-navbar {
+    left: 0 !important;
+  }
+
+  .ems-content {
+    margin-left: 0 !important;
+  }
+}
