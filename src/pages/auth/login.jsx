@@ -1,17 +1,41 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
 
 import {
-  GoogleAuthProvider,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-} from "firebase/auth";
+  Link,
+  useNavigate,
+} from "react-router-dom";
 
-import { auth as firebaseAuth } from "../../firebase";
-import { apiRequest } from "../../api/api";
+import {
+  loginUser,
+  loginWithGoogle,
+} from "../../api/auth";
+
+/*
+|--------------------------------------------------------------------------
+| Eye Icon
+|--------------------------------------------------------------------------
+*/
 
 function EyeIcon({ hidden = false }) {
-  return hidden ? (
+  if (hidden) {
+    return (
+      <svg
+        className="h-5 w-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        aria-hidden="true"
+      >
+        <path d="M3 3l18 18" />
+        <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83" />
+        <path d="M9.88 5.09A10.94 10.94 0 0 1 12 4.5c5.5 0 9.5 7.5 9.5 7.5a17.2 17.2 0 0 1-3.06 3.96" />
+        <path d="M6.61 6.61C3.92 8.43 2.5 12 2.5 12s4 7.5 9.5 7.5a10.9 10.9 0 0 0 3.12-.45" />
+      </svg>
+    );
+  }
+
+  return (
     <svg
       className="h-5 w-5"
       viewBox="0 0 24 24"
@@ -20,25 +44,17 @@ function EyeIcon({ hidden = false }) {
       strokeWidth="1.8"
       aria-hidden="true"
     >
-      <path d="M3 3l18 18" />
-      <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83" />
-      <path d="M9.88 5.09A10.94 10.94 0 0 1 12 4.5c5.5 0 9.5 7.5 9.5 7.5a17.2 17.2 0 0 1-3.06 3.96" />
-      <path d="M6.61 6.61C3.92 8.43 2.5 12 2.5 12s4 7.5 9.5 7.5a10.9 10.9 0 0 0 3.12-.45" />
-    </svg>
-  ) : (
-    <svg
-      className="h-5 w-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      aria-hidden="true"
-    >
-      <path d="M2.5 12s4-7.5 9.5-7.5 9.5 7.5 9.5 7.5-4 7.5-9.5 7.5S2.5 12 2.5 12Z" />
+      <path d="M2.5 12s4-7.5 9.5-7.5 9.5 7.5 9.5 7.5-4 7.5-9.5 7.5-9.5-7.5-9.5-7.5Z" />
       <circle cx="12" cy="12" r="3" />
     </svg>
   );
 }
+
+/*
+|--------------------------------------------------------------------------
+| Google Icon
+|--------------------------------------------------------------------------
+*/
 
 function GoogleIcon() {
   return (
@@ -49,23 +65,51 @@ function GoogleIcon() {
     >
       <path
         fill="#4285F4"
-        d="M21.6 12.23c0-.79-.07-1.55-.22-2.28H12v4.31h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.23c1.89-1.74 2.99-4.31 2.99-7.56Z"
+        d="M21.35 12.27c0-.78-.07-1.53-.23-2.25H12v4.26h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.7 2.91-4.22 2.91-7.4Z"
       />
       <path
         fill="#34A853"
-        d="M12 22c2.7 0 4.96-.89 6.61-2.41l-3.23-2.51c-.89.6-2.02.96-3.38.96-2.6 0-4.81-1.76-5.6-4.13H3.06v2.59A9.98 9.98 0 0 0 12 22Z"
+        d="M12 21.75c2.63 0 4.83-.87 6.44-2.36l-3.14-2.45c-.87.58-1.98.92-3.3.92-2.54 0-4.69-1.72-5.46-4.03H3.29v2.53A9.73 9.73 0 0 0 12 21.75Z"
       />
       <path
         fill="#FBBC05"
-        d="M6.4 13.91A6 6 0 0 1 6.08 12c0-.66.11-1.3.32-1.91V7.5H3.06A10 10 0 0 0 2 12c0 1.61.39 3.14 1.06 4.5l3.34-2.59Z"
+        d="M6.54 13.83A5.85 5.85 0 0 1 6.23 12c0-.64.11-1.25.31-1.83V7.64H3.29A9.75 9.75 0 0 0 2.25 12c0 1.57.38 3.05 1.04 4.36l3.25-2.53Z"
       />
       <path
         fill="#EA4335"
-        d="M12 5.96c1.47 0 2.79.51 3.83 1.51l2.87-2.87C16.95 2.99 14.69 2 12 2a9.98 9.98 0 0 0-8.94 5.5l3.34 2.59C7.19 7.72 9.4 5.96 12 5.96Z"
+        d="M12 6.14c1.43 0 2.71.49 3.72 1.46l2.79-2.79C16.83 3.24 14.63 2.25 12 2.25a9.75 9.75 0 0 0-8.71 5.39l3.25 2.53C7.31 7.86 9.46 6.14 12 6.14Z"
       />
     </svg>
   );
 }
+
+/*
+|--------------------------------------------------------------------------
+| Shield Icon
+|--------------------------------------------------------------------------
+*/
+
+function ShieldIcon() {
+  return (
+    <svg
+      className="h-5 w-5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      <path d="M12 3 20 6v5c0 5.1-3.4 8.7-8 10-4.6-1.3-8-4.9-8-10V6l8-3Z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+/*
+|--------------------------------------------------------------------------
+| Login Page
+|--------------------------------------------------------------------------
+*/
 
 function Login() {
   const navigate = useNavigate();
@@ -73,168 +117,164 @@ function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] =
+    useState(false);
 
-  const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [loading, setLoading] =
+    useState(false);
 
-  const [error, setError] = useState("");
+  const [googleLoading, setGoogleLoading] =
+    useState(false);
+
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
-  const saveUserAndRedirect = (user) => {
-    const role = String(user?.role || "employee")
+  /*
+  |--------------------------------------------------------------------------
+  | Redirect by role
+  |--------------------------------------------------------------------------
+  */
+
+  const redirectByRole = (user) => {
+    const role = String(
+      user?.role || "employee"
+    )
       .trim()
       .toLowerCase();
 
-    const userId =
-      user?._id ||
-      user?.id ||
-      user?.user_id;
-
-    if (userId) {
-      localStorage.setItem("userId", String(userId));
-    }
-
-    localStorage.setItem("userRole", role);
-
-    localStorage.setItem(
-      "userEmail",
-      user?.email || email.trim()
-    );
-
-    localStorage.setItem(
-      "userName",
-      user?.username ||
-        user?.name ||
-        ""
-    );
-
-    localStorage.setItem(
-      "currentUser",
-      JSON.stringify(user)
-    );
-
-    setMessage("Login successful. Redirecting...");
-
     if (role === "admin") {
       navigate("/admin/dashboard");
-    } else if (role === "manager") {
-      navigate("/manager/dashboard");
-    } else {
-      navigate("/employee/dashboard");
+      return;
     }
+
+    if (role === "manager") {
+      navigate("/manager/dashboard");
+      return;
+    }
+
+    navigate("/employee/dashboard");
   };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Email Login
+  |--------------------------------------------------------------------------
+  */
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    setError("");
     setMessage("");
+    setError("");
 
     if (!email.trim() || !password) {
-      setError("Please enter your email and password.");
+      setError(
+        "Please enter your email and password."
+      );
       return;
     }
 
     setLoading(true);
 
     try {
-      const cleanEmail = email.trim().toLowerCase();
-
-      const credential =
-        await signInWithEmailAndPassword(
-          firebaseAuth,
-          cleanEmail,
-          password
-        );
-
-      const idToken =
-        await credential.user.getIdToken();
-
-      const data = await apiRequest(
-        "/auth/firebase-login",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            id_token: idToken,
-          }),
-        }
+      const data = await loginUser(
+        email.trim(),
+        password
       );
 
-      if (!data?.success || !data?.user) {
+      if (
+        !data?.success ||
+        !data?.user
+      ) {
         setError(
           data?.message ||
-            "Unable to load your EMS account."
+            "Invalid email or password."
         );
         return;
       }
 
-      saveUserAndRedirect(data.user);
-    } catch (err) {
-      console.error("Email login error:", err);
+      const user = data.user;
 
-      switch (err?.code) {
-        case "auth/invalid-credential":
-        case "auth/wrong-password":
-        case "auth/user-not-found":
-          setError("Invalid email or password.");
-          break;
+      const userId =
+        user._id ||
+        user.id ||
+        user.user_id;
 
-        case "auth/invalid-email":
-          setError("Please enter a valid email address.");
-          break;
+      const role = String(
+        user.role || ""
+      )
+        .trim()
+        .toLowerCase();
 
-        case "auth/user-disabled":
-          setError(
-            "This account has been disabled. Please contact the administrator."
-          );
-          break;
-
-        case "auth/too-many-requests":
-          setError(
-            "Too many login attempts. Please wait and try again."
-          );
-          break;
-
-        default:
-          setError(
-            err?.message ||
-              "Unable to sign in. Please try again."
-          );
+      if (userId) {
+        localStorage.setItem(
+          "userId",
+          String(userId)
+        );
       }
+
+      localStorage.setItem(
+        "userRole",
+        role
+      );
+
+      localStorage.setItem(
+        "userEmail",
+        user.email || email.trim()
+      );
+
+      localStorage.setItem(
+        "userName",
+        user.username ||
+          user.name ||
+          ""
+      );
+
+      localStorage.setItem(
+        "currentUser",
+        JSON.stringify(user)
+      );
+
+      setMessage(
+        "Login successful. Redirecting..."
+      );
+
+      redirectByRole(user);
+    } catch (err) {
+      console.error(
+        "Email login error:",
+        err
+      );
+
+      setError(
+        err?.message ||
+          "Unable to connect to the server. Please try again."
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  /*
+  |--------------------------------------------------------------------------
+  | Google Login
+  |--------------------------------------------------------------------------
+  */
+
   const handleGoogleLogin = async () => {
-    setError("");
     setMessage("");
+    setError("");
+
     setGoogleLoading(true);
 
     try {
-      const provider = new GoogleAuthProvider();
+      const data =
+        await loginWithGoogle();
 
-      const result =
-        await signInWithPopup(
-          firebaseAuth,
-          provider
-        );
-
-      const idToken =
-        await result.user.getIdToken();
-
-      const data = await apiRequest(
-        "/auth/google",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            id_token: idToken,
-          }),
-        }
-      );
-
-      if (!data?.success || !data?.user) {
+      if (
+        !data?.success ||
+        !data?.user
+      ) {
         setError(
           data?.message ||
             "Google login failed."
@@ -242,94 +282,191 @@ function Login() {
         return;
       }
 
-      saveUserAndRedirect(data.user);
-    } catch (err) {
-      console.error("Google login error:", err);
+      const user = data.user;
 
-      if (
-        err?.code ===
-        "auth/popup-closed-by-user"
-      ) {
-        setError(
-          "Google sign-in was cancelled."
-        );
-      } else if (
-        err?.code ===
-        "auth/popup-blocked"
-      ) {
-        setError(
-          "Your browser blocked the Google sign-in popup."
-        );
-      } else if (
-        err?.code ===
-        "auth/network-request-failed"
-      ) {
-        setError(
-          "Network error. Please check your internet connection."
-        );
-      } else {
-        setError(
-          err?.message ||
-            "Google login failed."
+      const userId =
+        user._id ||
+        user.id ||
+        user.user_id;
+
+      const role = String(
+        user.role || ""
+      )
+        .trim()
+        .toLowerCase();
+
+      if (userId) {
+        localStorage.setItem(
+          "userId",
+          String(userId)
         );
       }
+
+      localStorage.setItem(
+        "userRole",
+        role
+      );
+
+      localStorage.setItem(
+        "userEmail",
+        user.email || ""
+      );
+
+      localStorage.setItem(
+        "userName",
+        user.username ||
+          user.name ||
+          ""
+      );
+
+      localStorage.setItem(
+        "currentUser",
+        JSON.stringify(user)
+      );
+
+      setMessage(
+        "Google login successful. Redirecting..."
+      );
+
+      redirectByRole(user);
+    } catch (err) {
+      console.error(
+        "Google login error:",
+        err
+      );
+
+      setError(
+        err?.message ||
+          "Google authentication failed."
+      );
     } finally {
       setGoogleLoading(false);
     }
   };
 
+  /*
+  |--------------------------------------------------------------------------
+  | UI
+  |--------------------------------------------------------------------------
+  */
+
   return (
-    <div className="h-screen overflow-hidden bg-white lg:flex">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-slate-50">
 
-      {/* LEFT IMAGE */}
-      <div className="relative hidden h-screen w-1/2 overflow-hidden lg:block">
+      {/* =========================================================
+          LEFT BRANDING
+      ========================================================== */}
 
-        {/* PASTE YOUR IMAGE URL HERE */}
+      <div className="relative w-full lg:w-1/2 min-h-[320px] lg:min-h-screen overflow-hidden">
+
         <img
-          src="https://media.istockphoto.com/id/1895058984/vector/hand-holding-smartphone-with-user-login-form-page-flat-illustration-vector-template-account.jpg?s=612x612&w=0&k=20&c=Wan_RzvpQhIQtYNq7cR7zJj42BvFIkmDFVD4wcmEcDA="
-          alt="Shnoor International LLC"
-          className="absolute inset-0 h-full w-full object-cover scale-125"
+          src="https://img.magnific.com/free-vector/user-verification-unauthorized-access-prevention-private-account-authentication-cyber-security-people-entering-login-password-safety-measures_335657-3530.jpg"
+          alt="Employee Management System"
+          className="absolute inset-0 w-full h-full object-cover"
         />
 
-        
+        <div className="absolute inset-0 bg-slate-950/65" />
 
-       </div>
+        <div className="relative z-10 flex h-full flex-col justify-between p-8 lg:p-14 text-white">
 
-     
+          {/* =====================================================
+              TOP LEFT EMS HEADING REMOVED
+          ===================================================== */}
 
+          {/* Main Text */}
 
-      {/* RIGHT LOGIN */}
-      <div className="flex h-screen w-full items-center justify-center overflow-hidden px-5 sm:px-8 lg:w-1/2 lg:px-16">
+          <div className="max-w-xl">
 
-        <div className="w-full max-w-md">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm font-medium text-orange-200 backdrop-blur">
 
-          {/* COMPANY NAME */}
-          <div className="mb-6 text-center">
-            <p>WELCOME TO</p>
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
 
-            <h1 className="text-2xl font-bold tracking-wide text-slate-900">
-              SHNOOR INTERNATIONAL LLC
+              Workforce management platform
+
+            </div>
+
+            <h1 className="text-4xl font-bold leading-tight lg:text-6xl">
+
+              Welcome back.
+
+              <span className="block text-orange-400">
+                Manage your workforce.
+              </span>
+
             </h1>
 
-            <div className="mx-auto mt-2 h-1 w-12 rounded-full bg-orange-600" />
+            <p className="mt-6 max-w-lg text-base leading-7 text-slate-200">
+
+              Sign in to your People Portal
+              account to access attendance,
+              tasks, leave requests, performance,
+              documents, payroll, and employee services.
+
+            </p>
 
           </div>
 
+          {/* Company Footer */}
 
-          {/* LOGIN FORM */}
+          <div className="text-sm text-slate-300">
+
+            <p className="font-semibold text-white">
+              SHNOOR INTERNATIONAL LLC
+            </p>
+
+            <p className="mt-1">
+              Empowering people. Managing work. Building success.
+            </p>
+
+          </div>
+
+        </div>
+      </div>
+
+      {/* =========================================================
+          RIGHT LOGIN AREA
+      ========================================================== */}
+
+      <div className="w-full lg:w-1/2 min-h-screen flex items-center justify-center px-5 py-10 sm:px-8 lg:px-16">
+
+        <div className="w-full max-w-md">
+
+          {/* Heading */}
+
+          <div className="mb-8">
+
+            <p className="mb-2 text-sm font-semibold uppercase tracking-[0.18em] text-orange-600">
+              People Login
+            </p>
+
+            <h1 className="text-4xl font-bold tracking-tight text-slate-900">
+              Welcome back
+            </h1>
+
+            <p className="mt-3 text-sm leading-6 text-slate-500">
+              Sign in with your registered
+              email address or continue
+              securely with Google.
+            </p>
+
+          </div>
+
+          {/* Login Form */}
+
           <form
             onSubmit={handleLogin}
-            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/60"
+            className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/60 sm:p-8"
           >
 
-            <div className="space-y-4">
+            <div className="space-y-5">
 
               {/* EMAIL */}
+
               <div>
 
                 <label
                   htmlFor="login-email"
-                  className="mb-1.5 block text-xs font-semibold text-slate-700"
+                  className="mb-2 block text-sm font-semibold text-slate-700"
                 >
                   Email address
                 </label>
@@ -338,38 +475,27 @@ function Login() {
                   id="login-email"
                   type="email"
                   autoComplete="email"
+                  placeholder="you@gmail.com"
                   value={email}
                   onChange={(e) =>
                     setEmail(e.target.value)
                   }
-                  placeholder="Enter email address"
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-50"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-50"
                   required
                 />
 
               </div>
 
-
               {/* PASSWORD */}
+
               <div>
 
-                <div className="mb-1.5 flex items-center justify-between">
-
-                  <label
-                    htmlFor="login-password"
-                    className="block text-xs font-semibold text-slate-700"
-                  >
-                    Password
-                  </label>
-
-                  <Link
-                    to="/forgot-password"
-                    className="text-[11px] font-semibold text-orange-600 hover:text-orange-700"
-                  >
-                    Forgot password?
-                  </Link>
-
-                </div>
+                <label
+                  htmlFor="login-password"
+                  className="mb-2 block text-sm font-semibold text-slate-700"
+                >
+                  Password
+                </label>
 
                 <div className="relative">
 
@@ -381,12 +507,12 @@ function Login() {
                         : "password"
                     }
                     autoComplete="current-password"
+                    placeholder="Enter your password"
                     value={password}
                     onChange={(e) =>
                       setPassword(e.target.value)
                     }
-                    placeholder="Enter password"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 pr-11 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-50"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-50"
                     required
                   />
 
@@ -397,7 +523,7 @@ function Login() {
                         (value) => !value
                       )
                     }
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                     aria-label={
                       showPassword
                         ? "Hide password"
@@ -413,43 +539,72 @@ function Login() {
 
               </div>
 
+              {/* FORGOT PASSWORD */}
+
+              <div className="flex items-center justify-between">
+
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+
+                  <ShieldIcon />
+
+                  Protected account access
+
+                </div>
+
+                <Link
+                  to="/forgot-password"
+                  className="text-xs font-semibold text-orange-600 hover:text-orange-700"
+                >
+                  Forgot password?
+                </Link>
+
+              </div>
 
               {/* ERROR */}
+
               {error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium leading-5 text-red-700">
                   {error}
                 </div>
               )}
 
-
               {/* SUCCESS */}
+
               {message && (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium leading-5 text-emerald-700">
                   {message}
                 </div>
               )}
 
+              {/* EMAIL LOGIN */}
 
-              {/* LOGIN BUTTON */}
               <button
                 type="submit"
                 disabled={
-                  loading || googleLoading
+                  loading ||
+                  googleLoading
                 }
-                className="w-full rounded-lg bg-orange-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading
-                  ? "Signing in..."
-                  : "Sign in"}
+
+                {loading ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                    Signing in...
+                  </>
+                ) : (
+                  "Sign in to People Portal"
+                )}
+
               </button>
 
-
               {/* DIVIDER */}
-              <div className="flex items-center gap-3">
+
+              <div className="flex items-center gap-3 py-1">
 
                 <div className="h-px flex-1 bg-slate-200" />
 
-                <span className="text-[10px] font-medium text-slate-400">
+                <span className="text-xs font-medium uppercase tracking-wider text-slate-400">
                   OR
                 </span>
 
@@ -457,22 +612,22 @@ function Login() {
 
               </div>
 
-
               {/* GOOGLE LOGIN */}
+
               <button
                 type="button"
                 onClick={handleGoogleLogin}
                 disabled={
-                  loading || googleLoading
+                  loading ||
+                  googleLoading
                 }
-                className="inline-flex w-full items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
               >
 
                 {googleLoading ? (
                   <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
-
-                    Connecting...
+                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-orange-500" />
+                    Connecting to Google...
                   </>
                 ) : (
                   <>
@@ -487,19 +642,25 @@ function Login() {
 
           </form>
 
+          {/* REGISTER LINK */}
 
-          {/* REGISTER */}
-          <p className="mt-4 text-center text-xs text-slate-500">
+          <p className="mt-7 text-center text-sm text-slate-500">
 
             Don't have an account?{" "}
 
             <Link
               to="/register"
-              className="font-semibold text-orange-600 hover:text-orange-700"
+              className="font-semibold text-orange-600 transition hover:text-orange-700"
             >
               Create an account
             </Link>
 
+          </p>
+
+          {/* KEEP BOTTOM COMPANY FOOTER */}
+
+          <p className="mt-8 text-center text-xs leading-5 text-slate-400">
+            SHNOOR INTERNATIONAL LLC · Employee Management System
           </p>
 
         </div>

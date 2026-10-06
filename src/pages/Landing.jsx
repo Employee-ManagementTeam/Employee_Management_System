@@ -1,1068 +1,1869 @@
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  ArrowRight,
+  Play,
+  Users,
+  CalendarCheck,
+  ClipboardList,
+  BarChart3,
+  ShieldCheck,
+  Clock3,
+  FileText,
+  WalletCards,
+  Bell,
+  CheckCircle2,
+  Menu,
+  X,
+  Mail,
+  Phone,
+  MapPin,
+  ChevronDown,
+  Sparkles,
+  Building2,
+  UserCheck,
+  TrendingUp,
+  BriefcaseBusiness,
+  Settings,
+  Search,
+  Award,
+} from "lucide-react";
 
-const features = [
-  {
-    title: "Employee Management",
-    description:
-      "Manage employee profiles, departments, designations, joining details, and employment status from one centralized system.",
-    icon: (
-      <svg
-        viewBox="0 0 24 24"
-        className="h-6 w-6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      >
-        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-      </svg>
-    ),
-  },
-  {
-    title: "Smart Attendance",
-    description:
-      "Track employee check-in, check-out, attendance status, and daily records with QR-based attendance support.",
-    icon: (
-      <svg
-        viewBox="0 0 24 24"
-        className="h-6 w-6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      >
-        <rect x="3" y="4" width="18" height="17" rx="2" />
-        <path d="M7 2v4M17 2v4M3 9h18" />
-        <path d="M8 13h2M14 13h2M8 17h2M14 17h2" />
-      </svg>
-    ),
-  },
-  {
-    title: "Leave Management",
-    description:
-      "Employees can submit leave requests while managers and administrators can review and manage approvals.",
-    icon: (
-      <svg
-        viewBox="0 0 24 24"
-        className="h-6 w-6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      >
-        <path d="M6 2v4M18 2v4" />
-        <rect x="3" y="4" width="18" height="18" rx="2" />
-        <path d="M3 10h18" />
-        <path d="M8 15h3M13 15h3" />
-      </svg>
-    ),
-  },
-  {
-    title: "Task Management",
-    description:
-      "Assign, monitor, update, and manage employee tasks with clear status tracking and progress visibility.",
-    icon: (
-      <svg
-        viewBox="0 0 24 24"
-        className="h-6 w-6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      >
-        <path d="M9 11l3 3L22 4" />
-        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-      </svg>
-    ),
-  },
-  {
-    title: "Performance",
-    description:
-      "Maintain employee performance records and give managers a clear overview of employee progress.",
-    icon: (
-      <svg
-        viewBox="0 0 24 24"
-        className="h-6 w-6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      >
-        <path d="M4 19V5" />
-        <path d="M4 17l5-5 4 3 7-8" />
-        <path d="M16 7h4v4" />
-      </svg>
-    ),
-  },
-  {
-    title: "Reports & Insights",
-    description:
-      "Generate organized reports for attendance, leave, payroll, employees, and other HR operations.",
-    icon: (
-      <svg
-        viewBox="0 0 24 24"
-        className="h-6 w-6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      >
-        <path d="M4 19V5" />
-        <path d="M4 19h16" />
-        <path d="M8 16v-5M12 16V7M16 16v-3M20 16V4" />
-      </svg>
-    ),
-  },
-];
+const Landing = () => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [activeFaq, setActiveFaq] = useState(null);
 
-const roles = [
-  {
-    number: "01",
-    title: "Administrator",
-    subtitle: "Complete organization control",
-    description:
-      "Manage employees, departments, attendance, leaves, payroll, reports, notifications, documents, and system activity.",
-  },
-  {
-    number: "02",
-    title: "Manager",
-    subtitle: "Team management workspace",
-    description:
-      "Monitor team attendance, assign tasks, review performance, manage leave requests, and access team reports.",
-  },
-  {
-    number: "03",
-    title: "Employee",
-    subtitle: "Personal self-service portal",
-    description:
-      "Manage attendance, tasks, leave applications, performance, documents, payroll information, and profile details.",
-  },
-];
+  const ORANGE = "#F97316";
+  const DARK_ORANGE = "#EA580C";
 
-function Landing() {
+  const features = [
+    {
+      icon: Users,
+      title: "Employee Management",
+      description:
+        "Manage employee profiles, departments, designations and professional information from one centralized platform.",
+    },
+    {
+      icon: CalendarCheck,
+      title: "Attendance Tracking",
+      description:
+        "Track employee check-ins, check-outs, attendance and working hours with ease.",
+    },
+    {
+      icon: ClipboardList,
+      title: "Leave Management",
+      description:
+        "Employees can submit leave requests while managers can review and approve them efficiently.",
+    },
+    {
+      icon: BriefcaseBusiness,
+      title: "Task Management",
+      description:
+        "Assign tasks, monitor progress and keep teams aligned with clear responsibilities.",
+    },
+    {
+      icon: BarChart3,
+      title: "Performance Management",
+      description:
+        "Track employee performance and maintain structured performance records.",
+    },
+    {
+      icon: WalletCards,
+      title: "Payroll Management",
+      description:
+        "Organize employee salary information and simplify payroll-related operations.",
+    },
+    {
+      icon: FileText,
+      title: "Document Management",
+      description:
+        "Keep important employee documents organized and accessible in one place.",
+    },
+    {
+      icon: Bell,
+      title: "Notifications",
+      description:
+        "Keep employees and managers informed about important updates and activities.",
+    },
+  ];
+
+  const steps = [
+    {
+      number: "01",
+      title: "Register Employees",
+      description:
+        "Create employee profiles and maintain essential professional information.",
+    },
+    {
+      number: "02",
+      title: "Manage Daily Work",
+      description:
+        "Track attendance, tasks, leave requests and everyday employee activities.",
+    },
+    {
+      number: "03",
+      title: "Monitor Performance",
+      description:
+        "Review employee performance and organizational progress.",
+    },
+    {
+      number: "04",
+      title: "Make Better Decisions",
+      description:
+        "Use organized information and reports to improve workforce management.",
+    },
+  ];
+
+  const faqs = [
+    {
+      question: "What is the Employee Management System?",
+      answer:
+        "It is a centralized web-based platform designed to manage employee information, attendance, leave, tasks, performance, payroll and other HR-related activities.",
+    },
+    {
+      question: "Who can use the system?",
+      answer:
+        "The system supports different roles such as Admin, Manager and Employee. Each role receives access to the features relevant to their responsibilities.",
+    },
+    {
+      question: "Does the system support role-based access?",
+      answer:
+        "Yes. Role-based authentication ensures that Admins, Managers and Employees see the appropriate dashboards and functionality.",
+    },
+    {
+      question: "Can employees manage their own information?",
+      answer:
+        "Yes. Employees can access their dashboard, view their information, manage applicable requests and track tasks and attendance.",
+    },
+  ];
+
+  const scrollToSection = (id) => {
+    const section = document.getElementById(id);
+
+    if (section) {
+      section.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+
+    setMenuOpen(false);
+  };
+
   return (
-    <div className="min-h-screen bg-[#fafafa] text-slate-900">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 overflow-x-hidden">
 
-      {/* ================= ANNOUNCEMENT ================= */}
-      <div className="border-b border-orange-100 bg-[#fff7f2]">
-        <div className="mx-auto flex max-w-7xl items-center justify-center px-6 py-2.5 text-center">
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
-            <span className="rounded-full bg-orange-600 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-white">
-              EMS
-            </span>
-            <span>
-              A centralized platform for modern employee management.
-            </span>
-          </div>
-        </div>
-      </div>
+      {/* =====================================================
+          NAVBAR
+      ====================================================== */}
 
-      {/* ================= NAVBAR ================= */}
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
+      <header className="fixed top-0 left-0 right-0 z-50">
 
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-600 shadow-md shadow-orange-100">
-              <svg
-                viewBox="0 0 24 24"
-                className="h-6 w-6 text-white"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-              >
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-            </div>
+        <div className="absolute inset-0 bg-white/85 backdrop-blur-xl border-b border-slate-200/70" />
 
-            <div>
-              <p className="text-lg font-extrabold tracking-tight text-slate-900">
-                Employee<span className="text-orange-600">MS</span>
-              </p>
+        <div className="relative max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
 
-              <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                People Management
-              </p>
-            </div>
-          </Link>
+          <div className="h-20 flex items-center justify-between">
 
-          {/* Navigation */}
-          <nav className="hidden items-center gap-7 md:flex">
-            <a
-              href="#home"
-              className="text-sm font-semibold text-slate-600 transition hover:text-orange-600"
+            {/* LOGO */}
+
+            <motion.button
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+              onClick={() => scrollToSection("home")}
+              className="flex items-center gap-3 group"
             >
-              Home
-            </a>
 
-            <a
-              href="#about"
-              className="text-sm font-semibold text-slate-600 transition hover:text-orange-600"
-            >
-              About Us
-            </a>
+              <div className="relative">
 
-            <a
-              href="#features"
-              className="text-sm font-semibold text-slate-600 transition hover:text-orange-600"
-            >
-              Features
-            </a>
-
-            <a
-              href="#roles"
-              className="text-sm font-semibold text-slate-600 transition hover:text-orange-600"
-            >
-              Roles
-            </a>
-
-            <a
-              href="#contact"
-              className="text-sm font-semibold text-slate-600 transition hover:text-orange-600"
-            >
-              Contact
-            </a>
-          </nav>
-
-          {/* Buttons */}
-          <div className="flex items-center gap-2">
-            <Link
-              to="/login"
-              className="hidden rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 sm:inline-flex"
-            >
-              Sign in
-            </Link>
-
-            <Link
-              to="/register"
-              className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-orange-100 transition hover:bg-orange-700"
-            >
-              Get started
-              <svg
-                viewBox="0 0 20 20"
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M4 10h12M11 5l5 5-5 5" />
-              </svg>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <main>
-
-        {/* ================= HOME / HERO ================= */}
-        <section
-          id="home"
-          className="relative overflow-hidden border-b border-slate-200 bg-white"
-        >
-          <div className="pointer-events-none absolute -left-32 top-24 h-72 w-72 rounded-full bg-orange-100/30 blur-3xl" />
-          <div className="pointer-events-none absolute right-0 top-0 h-80 w-80 rounded-full bg-orange-50/40 blur-3xl" />
-
-          <div className="relative mx-auto grid max-w-7xl items-center gap-14 px-6 py-20 lg:grid-cols-2 lg:px-8 lg:py-24">
-
-            {/* Hero content */}
-            <div>
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-orange-100 bg-orange-50 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-orange-700">
-                <span className="h-2 w-2 rounded-full bg-orange-600" />
-                Modern HR Management Platform
-              </div>
-
-              <h1 className="max-w-2xl text-4xl font-black leading-[1.08] tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
-                Manage your people.
-                <span className="block text-orange-600">
-                  Simplify your workplace.
-                </span>
-              </h1>
-
-              <p className="mt-6 max-w-xl text-base leading-7 text-slate-500 sm:text-lg">
-                EmployeeMS brings employee management, attendance, leave,
-                tasks, performance, documents, payroll, and reports together
-                in one centralized HR platform.
-              </p>
-
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link
-                  to="/login"
-                  className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-orange-100 transition hover:bg-orange-700"
+                <div
+                  className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:scale-105 transition-transform"
+                  style={{ backgroundColor: ORANGE }}
                 >
-                  Enter People Portal
-                  <svg
-                    viewBox="0 0 20 20"
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M4 10h12M11 5l5 5-5 5" />
-                  </svg>
-                </Link>
-
-                <a
-                  href="#features"
-                  className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-bold text-slate-700 transition hover:border-orange-200 hover:text-orange-600"
-                >
-                  Explore Features
-                </a>
-              </div>
-
-              <div className="mt-9 flex flex-wrap gap-x-7 gap-y-3">
-                {[
-                  "Role-based access",
-                  "Attendance tracking",
-                  "Centralized records",
-                ].map((item) => (
-                  <div
-                    key={item}
-                    className="flex items-center gap-2 text-sm text-slate-500"
-                  >
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-50 text-xs font-bold text-orange-600">
-                      ✓
-                    </span>
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Hero visual */}
-            <div className="relative">
-              <div className="relative mx-auto max-w-lg">
-                <div className="rounded-[2rem] border border-slate-200 bg-[#fcfcfc] p-6 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.3)] sm:p-8">
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-orange-600">
-                        People Portal
-                      </p>
-
-                      <h3 className="mt-2 text-2xl font-extrabold text-slate-900">
-                        Your workforce,
-                        <br />
-                        connected.
-                      </h3>
-                    </div>
-
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50">
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="h-7 w-7 text-orange-600"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.7"
-                      >
-                        <circle cx="9" cy="8" r="3.5" />
-                        <path d="M3.5 20a5.5 5.5 0 0 1 11 0" />
-                        <circle cx="17.5" cy="9" r="2.5" />
-                        <path d="M15 20a4 4 0 0 1 7 0" />
-                      </svg>
-                    </div>
-                  </div>
-
-                  <div className="relative mt-8 h-52 overflow-hidden rounded-2xl bg-white">
-                    <div className="absolute left-8 top-8 h-32 w-32 rounded-full bg-orange-50" />
-                    <div className="absolute bottom-0 right-3 h-28 w-28 rounded-full bg-orange-100/70" />
-
-                    <div className="absolute left-12 top-14 flex h-20 w-20 items-center justify-center rounded-full border-8 border-white bg-orange-500 shadow-lg shadow-orange-100">
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="h-9 w-9 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                      >
-                        <circle cx="12" cy="8" r="3.5" />
-                        <path d="M5 21a7 7 0 0 1 14 0" />
-                      </svg>
-                    </div>
-
-                    <div className="absolute left-36 top-6 flex h-16 w-16 items-center justify-center rounded-full border-8 border-white bg-slate-800 shadow-md">
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="h-7 w-7 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                      >
-                        <circle cx="12" cy="8" r="3" />
-                        <path d="M6 20a6 6 0 0 1 12 0" />
-                      </svg>
-                    </div>
-
-                    <div className="absolute bottom-5 left-28 flex h-14 w-14 items-center justify-center rounded-full border-8 border-white bg-orange-300 shadow-md">
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="h-6 w-6 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                      >
-                        <circle cx="12" cy="8" r="3" />
-                        <path d="M6 20a6 6 0 0 1 12 0" />
-                      </svg>
-                    </div>
-
-                    <div className="absolute left-[108px] top-[87px] h-[2px] w-[48px] bg-orange-200" />
-                    <div className="absolute left-[86px] top-[116px] h-[52px] w-[2px] bg-orange-200" />
-                    <div className="absolute left-[109px] bottom-[49px] h-[2px] w-[48px] bg-orange-200" />
-
-                    <div className="absolute bottom-4 right-4 rounded-xl border border-slate-100 bg-white px-4 py-3 shadow-lg">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-green-500" />
-                        <span className="text-xs font-bold text-slate-700">
-                          Team connected
-                        </span>
-                      </div>
-
-                      <p className="mt-1 text-[10px] text-slate-400">
-                        One system for HR operations
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 grid grid-cols-3 gap-3">
-                    {[
-                      ["24/7", "Access"],
-                      ["100%", "Centralized"],
-                      ["3", "User roles"],
-                    ].map(([value, label]) => (
-                      <div
-                        key={label}
-                        className="rounded-xl border border-slate-100 bg-white p-3"
-                      >
-                        <p className="text-sm font-extrabold text-orange-600">
-                          {value}
-                        </p>
-
-                        <p className="mt-1 text-[10px] text-slate-400">
-                          {label}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
+                  <Users className="w-5 h-5 text-white" />
                 </div>
 
-                <div className="absolute -bottom-5 -left-4 rounded-2xl border border-orange-100 bg-white px-4 py-3 shadow-xl sm:-left-6">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-50 text-green-600">
-                      ✓
-                    </div>
+                <div className="absolute -right-1 -bottom-1 w-4 h-4 rounded-full bg-orange-300 border-2 border-white" />
 
-                    <div>
-                      <p className="text-xs font-bold text-slate-800">
-                        HR operations simplified
-                      </p>
-
-                      <p className="mt-1 text-[10px] text-slate-400">
-                        Employees · Managers · Admins
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ================= ABOUT US ================= */}
-        <section
-          id="about"
-          className="border-b border-slate-200 bg-[#fffaf7]"
-        >
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-            <div className="grid items-center gap-12 lg:grid-cols-2">
-
-              <div>
-                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-600">
-                  About Us
-                </span>
-
-                <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-                  Making employee management
-                  <span className="block text-orange-600">
-                    simpler and smarter.
-                  </span>
-                </h2>
-
-                <p className="mt-5 text-sm leading-7 text-slate-500 sm:text-base">
-                   EmployeeMS is a web-based application that helps organizations manage employee information, departments, attendance, leave, tasks, performance, and payroll-related records through a centralized platform. It provides separate dashboards for administrators, managers, and employees to simplify daily HR and workforce management.
-                </p>
-
-                <p className="mt-4 text-sm leading-7 text-slate-500 sm:text-base">
-                  From employee records and attendance to leave management,
-                  tasks, performance, documents, payroll, notifications, and
-                  reports, the system helps organizations keep their workforce
-                  information organized and accessible.
-                </p>
-
-                <div className="mt-7 flex flex-wrap gap-3">
-                  <div className="rounded-xl border border-orange-100 bg-white px-5 py-3">
-                    <p className="text-lg font-black text-orange-600">
-                      Admin
-                    </p>
-                    
-                  </div>
-
-                  <div className="rounded-xl border border-orange-100 bg-white px-5 py-3">
-                    <p className="text-lg font-black text-orange-600">
-                      Manager
-                    </p>
-                    
-                  </div>
-
-                  <div className="rounded-xl border border-orange-100 bg-white px-5 py-3">
-                    <p className="text-lg font-black text-orange-600">
-                      Employee
-                    </p>
-                    
-                  </div>
-                </div>
               </div>
 
-              {/* About visual */}
-              <div className="rounded-3xl border border-orange-100 bg-white p-8 shadow-sm">
-                <div className="grid gap-4 sm:grid-cols-2">
+              <div className="text-left">
 
-                  <div className="rounded-2xl bg-orange-50 p-6">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-600 text-white">
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="h-6 w-6"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                      >
-                        <circle cx="12" cy="7" r="4" />
-                        <path d="M4 21a8 8 0 0 1 16 0" />
-                      </svg>
-                    </div>
-
-                    <h3 className="mt-5 font-extrabold text-slate-900">
-                      People First
-                    </h3>
-
-                    <p className="mt-2 text-xs leading-5 text-slate-500">
-                      Designed around the everyday needs of employees and HR
-                      teams.
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl bg-slate-50 p-6">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-white">
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="h-6 w-6"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                      >
-                        <path d="M4 19V5" />
-                        <path d="M4 19h16" />
-                        <path d="M8 16v-5M12 16V7M16 16v-3M20 16V4" />
-                      </svg>
-                    </div>
-
-                    <h3 className="mt-5 font-extrabold text-slate-900">
-                      Organized Data
-                    </h3>
-
-                    <p className="mt-2 text-xs leading-5 text-slate-500">
-                      Keep important employee and operational information
-                      organized in one place.
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl bg-slate-50 p-6">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-white">
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="h-6 w-6"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                      >
-                        <path d="M12 3v18M3 12h18" />
-                        <circle cx="12" cy="12" r="9" />
-                      </svg>
-                    </div>
-
-                    <h3 className="mt-5 font-extrabold text-slate-900">
-                      Connected Teams
-                    </h3>
-
-                    <p className="mt-2 text-xs leading-5 text-slate-500">
-                      Administrators, managers, and employees work through
-                      dedicated role-based experiences.
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl bg-orange-50 p-6">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-600 text-white">
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="h-6 w-6"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                      >
-                        <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z" />
-                        <path d="M9 12l2 2 4-4" />
-                      </svg>
-                    </div>
-
-                    <h3 className="mt-5 font-extrabold text-slate-900">
-                      Role Based Access
-                    </h3>
-
-                    <p className="mt-2 text-xs leading-5 text-slate-500">
-                      Users access the workspace and operations relevant to
-                      their responsibilities.
-                    </p>
-                  </div>
-
+                <div className="font-bold text-[15px] tracking-tight text-slate-950">
+                  SHNOOR
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
 
-        {/* ================= STATS ================= */}
-        <section className="border-b border-slate-200 bg-white">
-          <div className="mx-auto grid max-w-7xl gap-0 px-6 lg:grid-cols-4 lg:px-8">
-            {[
-              ["01", "Employee records", "Centralized workforce information"],
-              ["02", "Attendance", "Daily check-in and check-out"],
-              ["03", "Operations", "Tasks, leave and performance"],
-              ["04", "Reports", "Organized HR insights"],
-            ].map(([number, title, description], index) => (
-              <div
-                key={title}
-                className={`flex gap-4 px-4 py-7 ${
-                  index !== 0
-                    ? "border-t border-slate-100 lg:border-l lg:border-t-0"
-                    : ""
-                }`}
+                <div className="text-[9px] uppercase tracking-[0.18em] text-orange-600 font-bold">
+                  INTERNATIONAL LLC
+                </div>
+
+              </div>
+
+            </motion.button>
+
+            {/* DESKTOP NAVIGATION */}
+
+            <nav className="hidden md:flex items-center gap-8">
+
+              <button
+                onClick={() => scrollToSection("home")}
+                className="text-sm font-medium text-slate-700 hover:text-orange-600 transition-colors"
               >
-                <span className="text-xs font-black text-orange-600">
-                  {number}
-                </span>
+                Home
+              </button>
 
-                <div>
-                  <p className="text-sm font-bold text-slate-800">
-                    {title}
-                  </p>
-
-                  <p className="mt-1 text-xs leading-5 text-slate-400">
-                    {description}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ================= FEATURES ================= */}
-        <section
-          id="features"
-          className="mx-auto max-w-7xl px-6 py-20 lg:px-8"
-        >
-          <div className="mx-auto max-w-2xl text-center">
-            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-600">
-              Core capabilities
-            </span>
-
-            <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-              Everything your HR team needs
-            </h2>
-
-            <p className="mt-4 text-sm leading-6 text-slate-500 sm:text-base">
-              Keep employee operations organized through one connected,
-              professional management platform.
-            </p>
-          </div>
-
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature) => (
-              <div
-                key={feature.title}
-                className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-100/30"
+              <button
+                onClick={() => scrollToSection("features")}
+                className="text-sm font-medium text-slate-700 hover:text-orange-600 transition-colors"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-50 text-orange-600 transition group-hover:bg-orange-600 group-hover:text-white">
-                  {feature.icon}
-                </div>
+                Features
+              </button>
 
-                <h3 className="mt-5 text-base font-extrabold text-slate-900">
-                  {feature.title}
-                </h3>
+              <button
+                onClick={() => scrollToSection("how-it-works")}
+                className="text-sm font-medium text-slate-700 hover:text-orange-600 transition-colors"
+              >
+                How It Works
+              </button>
 
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  {feature.description}
-                </p>
+              <button
+                onClick={() => scrollToSection("about")}
+                className="text-sm font-medium text-slate-700 hover:text-orange-600 transition-colors"
+              >
+                About
+              </button>
 
-                <div className="mt-5 flex items-center gap-2 text-xs font-bold text-orange-600">
-                  Available module
-                  <svg
-                    viewBox="0 0 20 20"
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M4 10h12M11 5l5 5-5 5" />
-                  </svg>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+              <button
+                onClick={() => scrollToSection("contact")}
+                className="text-sm font-medium text-slate-700 hover:text-orange-600 transition-colors"
+              >
+                Contact
+              </button>
 
-        {/* ================= ROLES ================= */}
-        <section id="roles" className="border-y border-slate-200 bg-[#f8f8f8]">
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-            <div className="grid items-center gap-12 lg:grid-cols-[0.8fr_1.2fr]">
+            </nav>
 
-              <div>
-                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-600">
-                  Built for every role
-                </span>
+            {/* DESKTOP BUTTONS */}
 
-                <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-                  The right workspace
-                  <br />
-                  for every user.
-                </h2>
+            <div className="hidden md:flex items-center gap-3">
 
-                <p className="mt-5 max-w-lg text-sm leading-6 text-slate-500 sm:text-base">
-                  EmployeeMS separates responsibilities while keeping all
-                  workforce data connected through a single platform.
-                </p>
-
-                <Link
-                  to="/login"
-                  className="mt-7 inline-flex items-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-white shadow-md shadow-orange-100 transition hover:bg-orange-700"
-                >
-                  Open People Portal
-                  <svg
-                    viewBox="0 0 20 20"
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M4 10h12M11 5l5-5" />
-                  </svg>
-                </Link>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-3">
-                {roles.map((role) => (
-                  <div
-                    key={role.title}
-                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-                  >
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-50 text-sm font-black text-orange-600">
-                      {role.number}
-                    </div>
-
-                    <p className="mt-5 text-[10px] font-bold uppercase tracking-wider text-orange-600">
-                      {role.subtitle}
-                    </p>
-
-                    <h3 className="mt-1 text-lg font-black text-slate-900">
-                      {role.title}
-                    </h3>
-
-                    <p className="mt-3 text-xs leading-5 text-slate-500">
-                      {role.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-            </div>
-          </div>
-        </section>
-
-        {/* ================= PEOPLE PORTAL ================= */}
-        <section
-          id="portal"
-          className="mx-auto max-w-7xl px-6 py-20 lg:px-8"
-        >
-          <div className="overflow-hidden rounded-3xl bg-[#1f1f1f]">
-            <div className="grid items-center gap-10 px-7 py-10 sm:px-10 lg:grid-cols-[1fr_auto] lg:px-14 lg:py-14">
-
-              <div>
-                <span className="inline-flex rounded-full bg-orange-600/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-orange-400">
-                  People Portal
-                </span>
-
-                <h2 className="mt-4 max-w-2xl text-3xl font-black tracking-tight text-white sm:text-4xl">
-                  A single place for your everyday employee needs.
-                </h2>
-
-                <p className="mt-4 max-w-xl text-sm leading-6 text-slate-400 sm:text-base">
-                  Access attendance, tasks, leave requests, performance,
-                  documents, payroll information, notifications, and profile
-                  details through your personalized workspace.
-                </p>
-
-                <div className="mt-7 flex flex-wrap gap-3">
-                  <Link
-                    to="/login"
-                    className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-700"
-                  >
-                    Sign in to People Portal
-                    <svg
-                      viewBox="0 0 20 20"
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M4 10h12M11 5l5 5-5 5" />
-                    </svg>
-                  </Link>
-
-                  <Link
-                    to="/register"
-                    className="inline-flex items-center rounded-xl border border-slate-700 px-5 py-3 text-sm font-bold text-white transition hover:border-orange-500 hover:text-orange-400"
-                  >
-                    Create account
-                  </Link>
-                </div>
-              </div>
-
-              <div className="hidden lg:flex lg:h-48 lg:w-48 lg:items-center lg:justify-center">
-                <div className="relative flex h-40 w-40 items-center justify-center rounded-full border border-orange-600/20">
-                  <div className="absolute h-28 w-28 rounded-full border border-orange-600/20" />
-
-                  <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-orange-600 shadow-xl shadow-orange-900/30">
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="h-10 w-10 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                    >
-                      <circle cx="12" cy="8" r="3.5" />
-                      <path d="M5 21a7 7 0 0 1 14 0" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </section>
-
-        {/* ================= CONTACT ================= */}
-        <section
-          id="contact"
-          className="border-t border-slate-200 bg-[#fffaf7]"
-        >
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-
-            <div className="mx-auto max-w-2xl text-center">
-              <span className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-600">
-                Contact Us
-              </span>
-
-              <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-                Let’s connect.
-              </h2>
-
-              <p className="mt-4 text-sm leading-6 text-slate-500 sm:text-base">
-                Have questions about EmployeeMS or need assistance with the
-                platform? Our team is here to help.
-              </p>
-            </div>
-
-            <div className="mx-auto mt-12 grid max-w-4xl gap-5 sm:grid-cols-3">
-
-              <div className="rounded-2xl border border-orange-100 bg-white p-6 text-center shadow-sm">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-6 w-6"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                  >
-                    <rect x="3" y="5" width="18" height="14" rx="2" />
-                    <path d="m3 7 9 6 9-6" />
-                  </svg>
-                </div>
-
-                <h3 className="mt-5 font-extrabold text-slate-900">
-                  Email
-                </h3>
-
-                <p className="mt-2 text-sm text-slate-500">
-                  Contact the organization through its official communication
-                  channel.
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-orange-100 bg-white p-6 text-center shadow-sm">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-6 w-6"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                  >
-                    <path d="M12 21s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z" />
-                    <circle cx="12" cy="9" r="2.5" />
-                  </svg>
-                </div>
-
-                <h3 className="mt-5 font-extrabold text-slate-900">
-                  Organization
-                </h3>
-
-                <p className="mt-2 text-sm text-slate-500">
-                  SHNOOR INTERNATIONAL LLC
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-orange-100 bg-white p-6 text-center shadow-sm">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-6 w-6"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                  >
-                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.78.62 2.63a2 2 0 0 1-.45 2.11L8 9.73a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.85.29 1.73.5 2.63.62A2 2 0 0 1 22 16.92z" />
-                  </svg>
-                </div>
-
-                <h3 className="mt-5 font-extrabold text-slate-900">
-                  Support
-                </h3>
-
-                <p className="mt-2 text-sm text-slate-500">
-                  Assistance for employees and HR operations.
-                </p>
-              </div>
-
-            </div>
-          </div>
-        </section>
-
-        {/* ================= FINAL CTA ================= */}
-        <section className="border-t border-slate-200 bg-white">
-          <div className="mx-auto max-w-5xl px-6 py-20 text-center">
-
-            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-600">
-              Employee Management System
-            </span>
-
-            <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-              Simplify employee management.
-            </h2>
-
-            <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-slate-500 sm:text-base">
-              Connect your workforce, organize daily operations, and manage
-              employee information from one professional platform.
-            </p>
-
-            <div className="mt-7 flex justify-center gap-3">
               <Link
                 to="/login"
-                className="rounded-xl bg-orange-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-100 transition hover:bg-orange-700"
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-orange-50 transition-all"
               >
-                Sign in
+                Sign In
               </Link>
 
               <Link
                 to="/register"
-                className="rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition hover:border-orange-200 hover:text-orange-600"
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white shadow-lg shadow-orange-500/20 hover:shadow-orange-500/30 transition-all"
+                style={{ backgroundColor: ORANGE }}
               >
-                Register
+                Get Started
               </Link>
+
             </div>
+
+            {/* MOBILE MENU */}
+
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="md:hidden w-11 h-11 rounded-xl bg-orange-50 flex items-center justify-center"
+            >
+              {menuOpen ? (
+                <X className="w-5 h-5 text-orange-600" />
+              ) : (
+                <Menu className="w-5 h-5 text-orange-600" />
+              )}
+            </button>
+
           </div>
+
+          {/* MOBILE NAVIGATION */}
+
+          {menuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="md:hidden py-5 border-t border-slate-200"
+            >
+
+              <div className="flex flex-col gap-2">
+
+                <button
+                  onClick={() => scrollToSection("home")}
+                  className="text-left px-4 py-3 rounded-xl hover:bg-orange-50"
+                >
+                  Home
+                </button>
+
+                <button
+                  onClick={() => scrollToSection("features")}
+                  className="text-left px-4 py-3 rounded-xl hover:bg-orange-50"
+                >
+                  Features
+                </button>
+
+                <button
+                  onClick={() => scrollToSection("how-it-works")}
+                  className="text-left px-4 py-3 rounded-xl hover:bg-orange-50"
+                >
+                  How It Works
+                </button>
+
+                <button
+                  onClick={() => scrollToSection("about")}
+                  className="text-left px-4 py-3 rounded-xl hover:bg-orange-50"
+                >
+                  About
+                </button>
+
+                <button
+                  onClick={() => scrollToSection("contact")}
+                  className="text-left px-4 py-3 rounded-xl hover:bg-orange-50"
+                >
+                  Contact
+                </button>
+
+                <div className="grid grid-cols-2 gap-3 mt-3">
+
+                  <Link
+                    to="/login"
+                    className="text-center px-4 py-3 rounded-xl bg-slate-100 font-semibold"
+                  >
+                    Sign In
+                  </Link>
+
+                  <Link
+                    to="/register"
+                    className="text-center px-4 py-3 rounded-xl text-white font-semibold"
+                    style={{ backgroundColor: ORANGE }}
+                  >
+                    Get Started
+                  </Link>
+
+                </div>
+
+              </div>
+
+            </motion.div>
+          )}
+
+        </div>
+
+      </header>
+
+      {/* =====================================================
+          HERO
+      ====================================================== */}
+
+      <main id="home">
+
+        <section className="relative min-h-screen flex items-center pt-28 pb-20 overflow-hidden">
+
+          {/* Background */}
+
+          <div className="absolute inset-0 pointer-events-none">
+
+            <div className="absolute top-[-180px] right-[-100px] w-[550px] h-[550px] rounded-full bg-orange-100/60 blur-3xl" />
+
+            <div className="absolute bottom-[-200px] left-[-100px] w-[500px] h-[500px] rounded-full bg-amber-100/50 blur-3xl" />
+
+            <div
+              className="absolute inset-0 opacity-[0.035]"
+              style={{
+                backgroundImage:
+                  "linear-gradient(#0f172a 1px, transparent 1px), linear-gradient(90deg, #0f172a 1px, transparent 1px)",
+                backgroundSize: "45px 45px",
+              }}
+            />
+
+          </div>
+
+          <div className="relative max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 w-full">
+
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+
+              {/* HERO TEXT */}
+
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+              >
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-orange-100 shadow-sm mb-7"
+                >
+
+                  <Sparkles
+                    className="w-4 h-4"
+                    style={{ color: ORANGE }}
+                  />
+
+                  <span className="text-sm font-semibold text-slate-700">
+                    SHNOOR INTERNATIONAL LLC
+                  </span>
+
+                </motion.div>
+
+                <h1 className="text-5xl sm:text-6xl lg:text-[70px] leading-[1.03] font-bold tracking-[-0.04em] text-slate-950">
+
+                  Manage your
+
+                  <span className="block">
+                    workforce
+                    <span style={{ color: ORANGE }}> smarter.</span>
+                  </span>
+
+                </h1>
+
+                <p className="mt-7 text-lg leading-8 text-slate-600 max-w-xl">
+
+                  A modern employee management platform designed to
+                  simplify HR operations, connect teams and give your
+                  organization complete visibility.
+
+                </p>
+
+                <div className="mt-9 flex flex-col sm:flex-row gap-4">
+
+                  <Link
+                    to="/register"
+                    className="group inline-flex items-center justify-center gap-3 px-7 py-4 rounded-2xl text-white font-semibold shadow-xl shadow-orange-500/20 hover:shadow-orange-500/30 transition-all"
+                    style={{ backgroundColor: ORANGE }}
+                  >
+
+                    Get Started
+
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+
+                  </Link>
+
+                  <button
+                    onClick={() => scrollToSection("features")}
+                    className="inline-flex items-center justify-center gap-3 px-7 py-4 rounded-2xl bg-white border border-slate-200 text-slate-800 font-semibold hover:border-orange-200 hover:bg-orange-50 transition-all"
+                  >
+
+                    <Play
+                      className="w-4 h-4"
+                      style={{ color: ORANGE }}
+                    />
+
+                    Explore Features
+
+                  </button>
+
+                </div>
+
+                <div className="mt-9 flex flex-wrap gap-x-7 gap-y-3">
+
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+
+                    Role-based access
+
+                  </div>
+
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+
+                    Centralized data
+
+                  </div>
+
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+
+                    Easy to use
+
+                  </div>
+
+                </div>
+
+              </motion.div>
+
+              {/* HERO DASHBOARD */}
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92, y: 40 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.9, delay: 0.2 }}
+                className="relative"
+              >
+
+                <motion.div
+                  animate={{ y: [0, -10, 0] }}
+                  transition={{
+                    duration: 5,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="relative"
+                >
+
+                  <div className="rounded-[28px] bg-white border border-slate-200 shadow-2xl shadow-slate-900/10 p-4 sm:p-5">
+
+                    {/* Browser */}
+
+                    <div className="flex items-center justify-between mb-5 px-2">
+
+                      <div className="flex gap-1.5">
+
+                        <span className="w-2.5 h-2.5 rounded-full bg-orange-300" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-orange-200" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
+
+                      </div>
+
+                      <div className="w-32 h-2 rounded-full bg-slate-100" />
+
+                      <div className="w-8 h-8 rounded-full bg-orange-50" />
+
+                    </div>
+
+                    <div className="grid grid-cols-[75px_1fr] gap-4">
+
+                      {/* SIDEBAR */}
+
+                      <div className="rounded-2xl bg-[#17120F] p-3 flex flex-col items-center gap-4 min-h-[390px]">
+
+                        <div
+                          className="w-10 h-10 rounded-xl flex items-center justify-center"
+                          style={{ backgroundColor: ORANGE }}
+                        >
+                          <Users className="w-5 h-5 text-white" />
+                        </div>
+
+                        {[BarChart3, Users, CalendarCheck, ClipboardList, Settings].map(
+                          (Icon, index) => (
+                            <div
+                              key={index}
+                              className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                                index === 0
+                                  ? "bg-orange-500/20"
+                                  : "hover:bg-white/10"
+                              }`}
+                            >
+
+                              <Icon
+                                className="w-4 h-4"
+                                style={{
+                                  color:
+                                    index === 0
+                                      ? "#FB923C"
+                                      : "rgba(255,255,255,0.55)",
+                                }}
+                              />
+
+                            </div>
+                          )
+                        )}
+
+                      </div>
+
+                      {/* CONTENT */}
+
+                      <div>
+
+                        <div className="flex items-center justify-between mb-5">
+
+                          <div>
+
+                            <div className="text-[10px] text-slate-400 mb-1">
+                              SHNOOR INTERNATIONAL LLC
+                            </div>
+
+                            <div className="text-xl font-bold">
+                              Dashboard
+                            </div>
+
+                          </div>
+
+                          <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center">
+
+                            <Bell
+                              className="w-4 h-4"
+                              style={{ color: ORANGE }}
+                            />
+
+                          </div>
+
+                        </div>
+
+                        {/* Cards */}
+
+                        <div className="grid grid-cols-3 gap-2.5 mb-4">
+
+                          {[
+                            ["248", "Employees"],
+                            ["221", "Present"],
+                            ["27", "On Leave"],
+                          ].map(([number, label], index) => (
+
+                            <div
+                              key={index}
+                              className="rounded-xl bg-orange-50/50 border border-orange-100 p-3"
+                            >
+
+                              <div className="text-lg font-bold">
+                                {number}
+                              </div>
+
+                              <div className="text-[9px] text-slate-400 mt-1">
+                                {label}
+                              </div>
+
+                            </div>
+
+                          ))}
+
+                        </div>
+
+                        {/* Chart */}
+
+                        <div className="rounded-xl border border-slate-100 p-4 mb-4">
+
+                          <div className="flex justify-between mb-5">
+
+                            <div>
+
+                              <div className="text-sm font-semibold">
+                                Workforce Overview
+                              </div>
+
+                              <div className="text-[9px] text-slate-400">
+                                Monthly activity
+                              </div>
+
+                            </div>
+
+                            <div
+                              className="text-xs font-semibold"
+                              style={{ color: ORANGE }}
+                            >
+                              +18.4%
+                            </div>
+
+                          </div>
+
+                          <div className="h-28 flex items-end gap-2">
+
+                            {[45, 60, 50, 75, 65, 90, 78, 100, 85, 92, 76, 96].map(
+                              (height, index) => (
+
+                                <motion.div
+                                  key={index}
+                                  initial={{ height: 0 }}
+                                  animate={{ height: `${height}%` }}
+                                  transition={{
+                                    duration: 0.7,
+                                    delay: 0.5 + index * 0.05,
+                                  }}
+                                  className="flex-1 rounded-t-md"
+                                  style={{
+                                    backgroundColor:
+                                      index % 2 === 0
+                                        ? ORANGE
+                                        : "#FB923C",
+                                  }}
+                                />
+
+                              )
+                            )}
+
+                          </div>
+
+                        </div>
+
+                        {/* Employees */}
+
+                        <div className="rounded-xl border border-slate-100 p-4">
+
+                          <div className="flex items-center justify-between mb-3">
+
+                            <div className="text-sm font-semibold">
+                              Recent Employees
+                            </div>
+
+                            <div
+                              className="text-[10px] font-semibold"
+                              style={{ color: ORANGE }}
+                            >
+                              View all
+                            </div>
+
+                          </div>
+
+                          {[
+                            ["AS", "Ananya Sharma", "Engineering"],
+                            ["RK", "Rahul Kumar", "Marketing"],
+                            ["PS", "Priya Singh", "Design"],
+                          ].map(([initials, name, department], index) => (
+
+                            <div
+                              key={index}
+                              className="flex items-center gap-3 py-2 border-t border-slate-50"
+                            >
+
+                              <div className="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center text-[9px] font-bold text-orange-700">
+                                {initials}
+                              </div>
+
+                              <div className="flex-1">
+
+                                <div className="text-[10px] font-semibold">
+                                  {name}
+                                </div>
+
+                                <div className="text-[8px] text-slate-400">
+                                  {department}
+                                </div>
+
+                              </div>
+
+                              <div className="w-2 h-2 rounded-full bg-green-500" />
+
+                            </div>
+
+                          ))}
+
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                  {/* FLOATING ATTENDANCE */}
+
+                  <motion.div
+                    animate={{ y: [0, 8, 0] }}
+                    transition={{
+                      duration: 4,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    className="absolute -left-8 bottom-16 hidden sm:block bg-white border border-slate-200 rounded-2xl shadow-xl p-4 w-48"
+                  >
+
+                    <div className="flex items-center gap-3">
+
+                      <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
+
+                        <UserCheck
+                          className="w-5 h-5"
+                          style={{ color: ORANGE }}
+                        />
+
+                      </div>
+
+                      <div>
+
+                        <div className="text-xs text-slate-400">
+                          Attendance
+                        </div>
+
+                        <div className="font-bold text-lg">
+                          94.8%
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                  </motion.div>
+
+                  {/* FLOATING TASK */}
+
+                  <motion.div
+                    animate={{ y: [0, -7, 0] }}
+                    transition={{
+                      duration: 4.5,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    className="absolute -right-8 top-20 hidden sm:block bg-white border border-slate-200 rounded-2xl shadow-xl p-4 w-48"
+                  >
+
+                    <div className="flex items-center gap-3">
+
+                      <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
+
+                        <ClipboardList
+                          className="w-5 h-5"
+                          style={{ color: ORANGE }}
+                        />
+
+                      </div>
+
+                      <div>
+
+                        <div className="text-xs text-slate-400">
+                          Tasks Completed
+                        </div>
+
+                        <div className="font-bold text-lg">
+                          86%
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                  </motion.div>
+
+                </motion.div>
+
+              </motion.div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        {/* =====================================================
+            FEATURES
+        ====================================================== */}
+
+        <section
+          id="features"
+          className="py-28 bg-[#F8FAFC] scroll-mt-20"
+        >
+
+          <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
+
+            <motion.div
+              initial={{ opacity: 0, y: 25 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="max-w-2xl mb-14"
+            >
+
+              <div className="inline-flex items-center gap-2 text-sm font-semibold text-orange-600 mb-4">
+
+                <span className="w-8 h-px bg-orange-500" />
+
+                POWERFUL FEATURES
+
+              </div>
+
+              <h2 className="text-4xl sm:text-5xl font-bold tracking-tight text-slate-950">
+
+                Everything your team needs to manage work better.
+
+              </h2>
+
+              <p className="mt-5 text-lg leading-8 text-slate-600">
+
+                Bring employee information, daily operations and workforce
+                management into one simple and organized platform.
+
+              </p>
+
+            </motion.div>
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+              {features.map((feature, index) => {
+
+                const Icon = feature.icon;
+
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.07 }}
+                    whileHover={{ y: -6 }}
+                    className="group bg-white rounded-3xl border border-slate-200 p-6 hover:shadow-xl hover:shadow-orange-500/5 transition-all"
+                  >
+
+                    <div className="w-12 h-12 rounded-2xl bg-orange-50 group-hover:bg-orange-500 flex items-center justify-center transition-colors">
+
+                      <Icon className="w-5 h-5 text-orange-600 group-hover:text-white transition-colors" />
+
+                    </div>
+
+                    <h3 className="mt-6 text-lg font-bold">
+                      {feature.title}
+                    </h3>
+
+                    <p className="mt-3 text-sm leading-6 text-slate-500">
+                      {feature.description}
+                    </p>
+
+                    <div className="mt-5 flex items-center gap-2 text-xs font-semibold text-orange-600 opacity-0 group-hover:opacity-100 transition-opacity">
+
+                      Learn more
+
+                      <ArrowRight className="w-3.5 h-3.5" />
+
+                    </div>
+
+                  </motion.div>
+                );
+
+              })}
+
+            </div>
+
+          </div>
+
+        </section>
+
+        {/* =====================================================
+            ABOUT
+        ====================================================== */}
+
+        <section
+          id="about"
+          className="py-28 bg-white scroll-mt-20"
+        >
+
+          <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
+
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+
+              {/* ANALYTICS CARD */}
+
+              <motion.div
+                initial={{ opacity: 0, x: -40 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                className="relative"
+              >
+
+                <div className="rounded-[32px] bg-[#17120F] p-7 sm:p-9 overflow-hidden">
+
+                  <div className="relative">
+
+                    <div className="flex items-center justify-between mb-8">
+
+                      <div>
+
+                        <div className="text-xs text-slate-400 uppercase tracking-wider">
+                          Workforce Analytics
+                        </div>
+
+                        <div className="text-2xl font-bold text-white mt-2">
+                          Team Performance
+                        </div>
+
+                      </div>
+
+                      <div className="w-11 h-11 rounded-xl bg-orange-500/20 flex items-center justify-center">
+
+                        <BarChart3
+                          className="w-5 h-5"
+                          style={{ color: "#FB923C" }}
+                        />
+
+                      </div>
+
+                    </div>
+
+                    <div className="flex items-end gap-3 h-56">
+
+                      {[45, 55, 48, 70, 65, 82, 75, 92, 85, 96].map(
+                        (height, index) => (
+
+                          <motion.div
+                            key={index}
+                            initial={{ height: 0 }}
+                            whileInView={{ height: `${height}%` }}
+                            viewport={{ once: true }}
+                            transition={{
+                              duration: 0.8,
+                              delay: index * 0.06,
+                            }}
+                            className="flex-1 rounded-t-lg"
+                            style={{
+                              backgroundColor:
+                                index % 2 === 0
+                                  ? ORANGE
+                                  : "#FB923C",
+                            }}
+                          />
+
+                        )
+                      )}
+
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3 mt-7">
+
+                      <div className="rounded-2xl bg-white/5 p-4">
+
+                        <div className="text-xs text-slate-400">
+                          Productivity
+                        </div>
+
+                        <div className="text-xl text-white font-bold mt-1">
+                          92%
+                        </div>
+
+                      </div>
+
+                      <div className="rounded-2xl bg-white/5 p-4">
+
+                        <div className="text-xs text-slate-400">
+                          Attendance
+                        </div>
+
+                        <div className="text-xl text-white font-bold mt-1">
+                          95%
+                        </div>
+
+                      </div>
+
+                      <div className="rounded-2xl bg-white/5 p-4">
+
+                        <div className="text-xs text-slate-400">
+                          Tasks
+                        </div>
+
+                        <div className="text-xl text-white font-bold mt-1">
+                          86%
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+                <div className="absolute -bottom-7 -right-5 hidden sm:block bg-white rounded-2xl border border-slate-200 shadow-xl p-4">
+
+                  <div className="flex items-center gap-3">
+
+                    <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
+
+                      <Award
+                        className="w-5 h-5"
+                        style={{ color: ORANGE }}
+                      />
+
+                    </div>
+
+                    <div>
+
+                      <div className="text-xs text-slate-400">
+                        Performance
+                      </div>
+
+                      <div className="font-bold">
+                        Improving
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </motion.div>
+
+              {/* TEXT */}
+
+              <motion.div
+                initial={{ opacity: 0, x: 40 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+              >
+
+                <div className="inline-flex items-center gap-2 text-sm font-semibold text-orange-600 mb-5">
+
+                  <span className="w-8 h-px bg-orange-500" />
+
+                  WHY SHNOOR INTERNATIONAL LLC
+
+                </div>
+
+                <h2 className="text-4xl sm:text-5xl font-bold tracking-tight text-slate-950">
+
+                  One platform.
+
+                  <span className="block text-orange-600">
+                    Complete visibility.
+                  </span>
+
+                </h2>
+
+                <p className="mt-6 text-lg leading-8 text-slate-600">
+
+                  Managing employees across multiple systems can be
+                  complicated. Our Employee Management System brings
+                  important workforce operations together in one organized
+                  platform.
+
+                </p>
+
+                <div className="mt-8 space-y-5">
+
+                  {[
+                    {
+                      icon: ShieldCheck,
+                      title: "Secure role-based access",
+                      text: "Give Admins, Managers and Employees access to the tools they need.",
+                    },
+                    {
+                      icon: Search,
+                      title: "Centralized information",
+                      text: "Find employee records, attendance, tasks and requests without switching systems.",
+                    },
+                    {
+                      icon: TrendingUp,
+                      title: "Better decisions",
+                      text: "Use structured information and reports to understand workforce performance.",
+                    },
+                  ].map((item, index) => {
+
+                    const Icon = item.icon;
+
+                    return (
+                      <div
+                        key={index}
+                        className="flex gap-4"
+                      >
+
+                        <div className="w-11 h-11 shrink-0 rounded-xl bg-orange-50 flex items-center justify-center">
+
+                          <Icon
+                            className="w-5 h-5"
+                            style={{ color: ORANGE }}
+                          />
+
+                        </div>
+
+                        <div>
+
+                          <h3 className="font-bold">
+                            {item.title}
+                          </h3>
+
+                          <p className="mt-1 text-sm leading-6 text-slate-500">
+                            {item.text}
+                          </p>
+
+                        </div>
+
+                      </div>
+                    );
+
+                  })}
+
+                </div>
+
+              </motion.div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        {/* =====================================================
+            HOW IT WORKS
+        ====================================================== */}
+
+        <section
+          id="how-it-works"
+          className="py-28 bg-[#17120F] text-white scroll-mt-20"
+        >
+
+          <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
+
+            <motion.div
+              initial={{ opacity: 0, y: 25 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="max-w-2xl mb-16"
+            >
+
+              <div className="inline-flex items-center gap-2 text-sm font-semibold text-orange-400 mb-4">
+
+                <span className="w-8 h-px bg-orange-400" />
+
+                SIMPLE WORKFLOW
+
+              </div>
+
+              <h2 className="text-4xl sm:text-5xl font-bold tracking-tight">
+
+                From employee data to better management.
+
+              </h2>
+
+              <p className="mt-5 text-lg leading-8 text-slate-400">
+
+                A straightforward workflow that keeps your organization
+                organized from onboarding to performance management.
+
+              </p>
+
+            </motion.div>
+
+            <div className="grid md:grid-cols-4 gap-6">
+
+              {steps.map((step, index) => (
+
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  className="relative"
+                >
+
+                  {index !== steps.length - 1 && (
+                    <div className="hidden md:block absolute top-7 left-[calc(100%-5px)] w-full h-px bg-white/10" />
+                  )}
+
+                  <div
+                    className="relative z-10 w-14 h-14 rounded-2xl flex items-center justify-center text-sm font-bold shadow-lg shadow-orange-900/20"
+                    style={{ backgroundColor: ORANGE }}
+                  >
+                    {step.number}
+                  </div>
+
+                  <h3 className="mt-7 text-xl font-bold">
+                    {step.title}
+                  </h3>
+
+                  <p className="mt-3 text-sm leading-6 text-slate-400">
+                    {step.description}
+                  </p>
+
+                </motion.div>
+
+              ))}
+
+            </div>
+
+          </div>
+
+        </section>
+
+        {/* =====================================================
+            FAQ
+        ====================================================== */}
+
+        <section className="py-28 bg-[#F8FAFC]">
+
+          <div className="max-w-4xl mx-auto px-5 sm:px-8">
+
+            <motion.div
+              initial={{ opacity: 0, y: 25 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-12"
+            >
+
+              <div className="inline-flex items-center gap-2 text-sm font-semibold text-orange-600 mb-4">
+
+                <span className="w-8 h-px bg-orange-500" />
+
+                FAQ
+
+                <span className="w-8 h-px bg-orange-500" />
+
+              </div>
+
+              <h2 className="text-4xl font-bold">
+                Frequently asked questions
+              </h2>
+
+              <p className="mt-4 text-slate-500">
+                Everything you need to know about the platform.
+              </p>
+
+            </motion.div>
+
+            <div className="space-y-3">
+
+              {faqs.map((faq, index) => {
+
+                const isOpen = activeFaq === index;
+
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 15 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="bg-white rounded-2xl border border-slate-200 overflow-hidden"
+                  >
+
+                    <button
+                      onClick={() =>
+                        setActiveFaq(isOpen ? null : index)
+                      }
+                      className="w-full px-6 py-5 flex items-center justify-between text-left"
+                    >
+
+                      <span className="font-semibold">
+                        {faq.question}
+                      </span>
+
+                      <ChevronDown
+                        className={`w-5 h-5 text-slate-400 transition-transform ${
+                          isOpen ? "rotate-180 text-orange-500" : ""
+                        }`}
+                      />
+
+                    </button>
+
+                    {isOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{
+                          opacity: 1,
+                          height: "auto",
+                        }}
+                        className="px-6 pb-6"
+                      >
+
+                        <p className="text-sm leading-7 text-slate-500">
+                          {faq.answer}
+                        </p>
+
+                      </motion.div>
+                    )}
+
+                  </motion.div>
+                );
+
+              })}
+
+            </div>
+
+          </div>
+
+        </section>
+
+        {/* =====================================================
+            CTA
+        ====================================================== */}
+
+        <section className="py-20 bg-white">
+
+          <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="relative overflow-hidden rounded-[32px] px-7 py-14 sm:px-12 text-center"
+              style={{ backgroundColor: ORANGE }}
+            >
+
+              <div className="absolute top-[-100px] left-[-100px] w-64 h-64 rounded-full bg-white/10 blur-2xl" />
+
+              <div className="absolute bottom-[-100px] right-[-50px] w-72 h-72 rounded-full bg-white/10 blur-2xl" />
+
+              <div className="relative">
+
+                <Sparkles className="w-7 h-7 text-white/80 mx-auto mb-5" />
+
+                <h2 className="text-3xl sm:text-5xl font-bold text-white">
+
+                  Ready to manage your workforce better?
+
+                </h2>
+
+                <p className="mt-5 text-orange-100 max-w-2xl mx-auto leading-7">
+
+                  Bring your employees, tasks, attendance and performance
+                  together with a modern employee management platform.
+
+                </p>
+
+                <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+
+                  <Link
+                    to="/register"
+                    className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-2xl bg-white font-bold hover:bg-orange-50 transition-all"
+                    style={{ color: DARK_ORANGE }}
+                  >
+
+                    Create Account
+
+                    <ArrowRight className="w-5 h-5" />
+
+                  </Link>
+
+                  <Link
+                    to="/login"
+                    className="inline-flex items-center justify-center px-7 py-4 rounded-2xl bg-orange-700 text-white font-semibold hover:bg-orange-800 transition-all"
+                  >
+                    Sign In
+                  </Link>
+
+                </div>
+
+              </div>
+
+            </motion.div>
+
+          </div>
+
+        </section>
+
+        {/* =====================================================
+            CONTACT
+        ====================================================== */}
+
+        <section
+          id="contact"
+          className="py-28 bg-[#F8FAFC] scroll-mt-20"
+        >
+
+          <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
+
+            <div className="grid lg:grid-cols-2 gap-16">
+
+              {/* CONTACT INFO */}
+
+              <motion.div
+                initial={{ opacity: 0, x: -30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+              >
+
+                <div className="inline-flex items-center gap-2 text-sm font-semibold text-orange-600 mb-5">
+
+                  <span className="w-8 h-px bg-orange-500" />
+
+                  GET IN TOUCH
+
+                </div>
+
+                <h2 className="text-4xl sm:text-5xl font-bold tracking-tight">
+
+                  Let's build a better workplace.
+
+                </h2>
+
+                <p className="mt-5 text-lg leading-8 text-slate-600 max-w-xl">
+
+                  Have questions about our Employee Management System?
+                  Get in touch with the SHNOOR INTERNATIONAL LLC team.
+
+                </p>
+
+                <div className="mt-10 space-y-6">
+
+                  {/* EMAIL */}
+
+                  <a
+                    href="mailto:shnoor@gmail.com"
+                    className="flex items-center gap-4 group"
+                  >
+
+                    <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center group-hover:bg-orange-500 transition-colors">
+
+                      <Mail className="w-5 h-5 text-slate-700 group-hover:text-white" />
+
+                    </div>
+
+                    <div>
+
+                      <div className="text-xs text-slate-400 uppercase tracking-wider">
+                        Email
+                      </div>
+
+                      <div className="font-semibold text-slate-800">
+                        shnoor@gmail.com
+                      </div>
+
+                    </div>
+
+                  </a>
+
+                  {/* PHONE */}
+
+                  <a
+                    href="tel:180034342826"
+                    className="flex items-center gap-4 group"
+                  >
+
+                    <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center group-hover:bg-orange-500 transition-colors">
+
+                      <Phone className="w-5 h-5 text-slate-700 group-hover:text-white" />
+
+                    </div>
+
+                    <div>
+
+                      <div className="text-xs text-slate-400 uppercase tracking-wider">
+                        Phone
+                      </div>
+
+                      <div className="font-semibold text-slate-800">
+                        1800-3434-2826
+                      </div>
+
+                    </div>
+
+                  </a>
+
+                  {/* LOCATION */}
+
+                  <div className="flex items-center gap-4">
+
+                    <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center">
+
+                      <MapPin className="w-5 h-5 text-orange-600" />
+
+                    </div>
+
+                    <div>
+
+                      <div className="text-xs text-slate-400 uppercase tracking-wider">
+                        Location
+                      </div>
+
+                      <div className="font-semibold text-slate-800">
+                        Hyderabad, India
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </motion.div>
+
+              {/* CONTACT FORM */}
+
+              <motion.div
+                initial={{ opacity: 0, x: 30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                className="bg-white rounded-[28px] border border-slate-200 shadow-xl shadow-slate-900/5 p-7 sm:p-9"
+              >
+
+                <div className="flex items-center gap-3 mb-7">
+
+                  <div className="w-11 h-11 rounded-xl bg-orange-50 flex items-center justify-center">
+
+                    <Mail
+                      className="w-5 h-5"
+                      style={{ color: ORANGE }}
+                    />
+
+                  </div>
+
+                  <div>
+
+                    <h3 className="font-bold text-lg">
+                      Contact our team
+                    </h3>
+
+                    <p className="text-sm text-slate-400">
+                      We'll get back to you soon.
+                    </p>
+
+                  </div>
+
+                </div>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+
+                    window.location.href =
+                      "mailto:shnoor@gmail.com?subject=Employee Management System Inquiry";
+                  }}
+                  className="space-y-5"
+                >
+
+                  <div className="grid sm:grid-cols-2 gap-4">
+
+                    <div>
+
+                      <label className="block text-sm font-semibold mb-2">
+                        Your Name
+                      </label>
+
+                      <input
+                        type="text"
+                        placeholder="Enter your name"
+                        className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                      />
+
+                    </div>
+
+                    <div>
+
+                      <label className="block text-sm font-semibold mb-2">
+                        Email
+                      </label>
+
+                      <input
+                        type="email"
+                        placeholder="you@example.com"
+                        className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                      />
+
+                    </div>
+
+                  </div>
+
+                  <div>
+
+                    <label className="block text-sm font-semibold mb-2">
+                      Subject
+                    </label>
+
+                    <input
+                      type="text"
+                      placeholder="How can we help?"
+                      className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all"
+                    />
+
+                  </div>
+
+                  <div>
+
+                    <label className="block text-sm font-semibold mb-2">
+                      Message
+                    </label>
+
+                    <textarea
+                      rows="5"
+                      placeholder="Write your message..."
+                      className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all resize-none"
+                    />
+
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl text-white font-semibold hover:shadow-lg hover:shadow-orange-500/20 transition-all"
+                    style={{ backgroundColor: ORANGE }}
+                  >
+
+                    Send Message
+
+                    <ArrowRight className="w-4 h-4" />
+
+                  </button>
+
+                </form>
+
+              </motion.div>
+
+            </div>
+
+          </div>
+
         </section>
 
       </main>
 
-      {/* ================= FOOTER ================= */}
-      <footer className="border-t border-slate-800 bg-[#181818] text-slate-400">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-8 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+      {/* =====================================================
+          FOOTER
+      ====================================================== */}
 
-          <div>
-            <p className="font-bold text-white">
-              Employee<span className="text-orange-600">MS</span>
-            </p>
+      <footer className="bg-[#17120F] text-white">
 
-            <p className="mt-1 text-xs">
-              Employee Management System
-            </p>
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 py-16">
 
-            <p className="mt-1 text-xs text-slate-500">
-              SHNOOR INTERNATIONAL LLC
-            </p>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12">
+
+            {/* BRAND */}
+
+            <div className="lg:col-span-2">
+
+              <div className="flex items-center gap-3">
+
+                <div
+                  className="w-11 h-11 rounded-2xl flex items-center justify-center"
+                  style={{ backgroundColor: ORANGE }}
+                >
+                  <Users className="w-5 h-5 text-white" />
+                </div>
+
+                <div>
+
+                  <div className="font-bold text-lg">
+                    SHNOOR
+                  </div>
+
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-orange-400">
+                    INTERNATIONAL LLC
+                  </div>
+
+                </div>
+
+              </div>
+
+              <p className="mt-6 text-sm leading-7 text-slate-400 max-w-md">
+
+                A modern employee management platform designed to
+                simplify workforce operations and help organizations
+                work smarter.
+
+              </p>
+
+              <div className="mt-6 flex items-center gap-3">
+
+                <a
+                  href="mailto:shnoor@gmail.com"
+                  className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-orange-500 transition-colors"
+                >
+                  <Mail className="w-4 h-4" />
+                </a>
+
+                <a
+                  href="tel:180034342826"
+                  className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-orange-500 transition-colors"
+                >
+                  <Phone className="w-4 h-4" />
+                </a>
+
+              </div>
+
+            </div>
+
+            {/* PLATFORM */}
+
+            <div>
+
+              <h3 className="font-semibold mb-5">
+                Platform
+              </h3>
+
+              <div className="space-y-3 text-sm text-slate-400">
+
+                <button
+                  onClick={() => scrollToSection("features")}
+                  className="block hover:text-orange-400 transition-colors"
+                >
+                  Features
+                </button>
+
+                <button
+                  onClick={() => scrollToSection("how-it-works")}
+                  className="block hover:text-orange-400 transition-colors"
+                >
+                  How It Works
+                </button>
+
+                <Link
+                  to="/login"
+                  className="block hover:text-orange-400 transition-colors"
+                >
+                  Sign In
+                </Link>
+
+                <Link
+                  to="/register"
+                  className="block hover:text-orange-400 transition-colors"
+                >
+                  Create Account
+                </Link>
+
+              </div>
+
+            </div>
+
+            {/* CONTACT */}
+
+            <div>
+
+              <h3 className="font-semibold mb-5">
+                Contact
+              </h3>
+
+              <div className="space-y-4 text-sm text-slate-400">
+
+                <a
+                  href="mailto:shnoor@gmail.com"
+                  className="flex gap-3 hover:text-orange-400 transition-colors"
+                >
+
+                  <Mail className="w-4 h-4 mt-0.5 shrink-0" />
+
+                  <span>
+                    shnoor@gmail.com
+                  </span>
+
+                </a>
+
+                <a
+                  href="tel:180034342826"
+                  className="flex gap-3 hover:text-orange-400 transition-colors"
+                >
+
+                  <Phone className="w-4 h-4 mt-0.5 shrink-0" />
+
+                  <span>
+                    1800-3434-2826
+                  </span>
+
+                </a>
+
+                <div className="flex gap-3">
+
+                  <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-orange-400" />
+
+                  <span>
+                    Hyderabad, India
+                  </span>
+
+                </div>
+
+              </div>
+
+            </div>
+
           </div>
 
-          <div className="flex flex-wrap items-center gap-5 text-xs">
-            <a
-              href="#home"
-              className="transition hover:text-orange-400"
-            >
-              Home
-            </a>
+          <div className="border-t border-white/10 mt-14 pt-7 flex flex-col sm:flex-row items-center justify-between gap-4">
 
-            <a
-              href="#about"
-              className="transition hover:text-orange-400"
-            >
-              About
-            </a>
+            <p className="text-xs text-slate-500">
+              © {new Date().getFullYear()} SHNOOR INTERNATIONAL LLC. All rights reserved.
+            </p>
 
-            <a
-              href="#features"
-              className="transition hover:text-orange-400"
-            >
-              Features
-            </a>
+            <div className="flex items-center gap-2 text-xs text-slate-500">
 
-            <a
-              href="#contact"
-              className="transition hover:text-orange-400"
-            >
-              Contact
-            </a>
+              <span>
+                Employee Management System
+              </span>
 
-            <Link
-              to="/terms"
-              className="transition hover:text-orange-400"
-            >
-              Terms
-            </Link>
+              <span>•</span>
 
-            <Link
-              to="/privacy-policy"
-              className="transition hover:text-orange-400"
-            >
-              Privacy
-            </Link>
-          </div>
+              <span className="text-orange-400">
+                SHNOOR INTERNATIONAL LLC
+              </span>
 
-          <div className="text-xs">
-            © {new Date().getFullYear()} EmployeeMS. All rights reserved.
+            </div>
+
           </div>
 
         </div>
+
       </footer>
 
     </div>
   );
-}
+};
 
 export default Landing;
