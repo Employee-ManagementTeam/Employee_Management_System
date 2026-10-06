@@ -6,9 +6,9 @@ function Sidebar() {
   const menuItems = [
     { name: "Dashboard", path: "/admin/dashboard" },
     { name: "Employees", path: "/admin/employees" },
-    { name: "Departments", path: "/admin/department" },
+    { name: "Departments", path: "/admin/departments" },
     { name: "Attendance", path: "/admin/attendance" },
-    { name: "Leave", path: "/admin/leave" },
+    { name: "Leave", path: "/admin/leave-management" },
     { name: "Tasks", path: "/admin/tasks" },
     { name: "Performance", path: "/admin/performance" },
     { name: "Documents", path: "/admin/documents" },
@@ -16,28 +16,43 @@ function Sidebar() {
     { name: "Payroll", path: "/admin/payroll" },
     { name: "Notifications", path: "/admin/notifications" },
     { name: "Reports", path: "/admin/reports" },
-    { name: "Activity Logs", path: "/admin/activitylogs" },
+    { name: "Activity Logs", path: "/admin/activity-logs" },
   ];
 
   const handleLogout = () => {
     localStorage.removeItem("userId");
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("currentUser");
+
+    // Remove older session keys too
     localStorage.removeItem("username");
     localStorage.removeItem("email");
     localStorage.removeItem("role");
+
     navigate("/login");
   };
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-white border-r border-gray-200 shadow-sm">
+    <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-gray-200 bg-white shadow-sm">
       <div className="flex h-full flex-col">
 
         {/* Logo */}
-        <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
-           <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-sm">S</div>
-           <div>
-            <h1 className="text-[13px] font-bold leading-tight text-slate-900 tracking-wide">SHNOOR INTE...</h1>
-            <p className="text-[11px] text-gray-400">Connecting Tech...</p>
-           </div>
+        <div className="flex items-center gap-3 border-b border-gray-100 px-6 py-5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-600">
+            S
+          </div>
+
+          <div>
+            <h1 className="text-[13px] font-bold leading-tight tracking-wide text-slate-900">
+              SHNOOR INTE...
+            </h1>
+
+            <p className="text-[11px] text-gray-400">
+              Connecting Tech...
+            </p>
+          </div>
         </div>
 
         {/* Navigation */}
@@ -50,7 +65,7 @@ function Sidebar() {
                 className={({ isActive }) =>
                   `flex items-center rounded-lg px-4 py-2.5 text-[14px] font-medium transition-all ${
                     isActive
-                     ? "bg-[#FFF8E7] text-[#B7792B]"
+                      ? "bg-[#FFF8E7] text-[#B7792B]"
                       : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
                   }`
                 }
@@ -64,8 +79,9 @@ function Sidebar() {
         {/* Logout */}
         <div className="border-t border-gray-100 p-3">
           <button
+            type="button"
             onClick={handleLogout}
-            className="flex w-full items-center rounded-lg px-4 py-2.5 text-[14px] font-semibold text-red-500 hover:bg-red-50 transition"
+            className="flex w-full items-center rounded-lg px-4 py-2.5 text-[14px] font-semibold text-red-500 transition hover:bg-red-50"
           >
             Logout
           </button>

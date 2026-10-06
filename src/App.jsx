@@ -4,6 +4,14 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Login from "./pages/auth/login";
 import Register from "./pages/auth/Register";
+import ForgotPassword from "./pages/auth/forgot-password";
+import ResetPassword from "./pages/auth/reset-password";
+import Landing from "./pages/Landing";
+
+/* ================= LEGAL ================= */
+
+import Terms from "./pages/legal/terms";
+import PrivacyPolicy from "./pages/privacy-policy";
 
 /* ================= ADMIN ================= */
 
@@ -20,8 +28,6 @@ import AdminActivityLogs from "./pages/admin/activitylogs";
 import AdminNotifications from "./pages/admin/notifications";
 import AdminReports from "./pages/admin/reports";
 import AdminSalary from "./pages/admin/salary";
-
-/* ================= MANAGER ================= */
 
 /* ================= MANAGER ================= */
 
@@ -49,11 +55,17 @@ import EmployeeProfile from "./pages/employee/profile";
 import EmployeeTasks from "./pages/employee/tasks";
 import EmployeeActivityLogs from "./pages/employee/activitylogs";
 
-
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+
+        {/* ================= LANDING ================= */}
+
+        <Route
+          path="/"
+          element={<Landing />}
+        />
 
         {/* ================= AUTH ================= */}
 
@@ -67,6 +79,27 @@ function App() {
           element={<Register />}
         />
 
+        <Route
+          path="/forgot-password"
+          element={<ForgotPassword />}
+        />
+
+        <Route
+          path="/reset-password"
+          element={<ResetPassword />}
+        />
+
+        {/* ================= LEGAL ================= */}
+
+        <Route
+          path="/terms"
+          element={<Terms />}
+        />
+
+        <Route
+          path="/privacy-policy"
+          element={<PrivacyPolicy />}
+        />
 
         {/* ================= ADMIN ================= */}
 
@@ -135,63 +168,62 @@ function App() {
           element={<AdminSalary />}
         />
 
-
         {/* ================= MANAGER ================= */}
 
         <Route
-  path="/manager/dashboard"
-  element={<ManagerDashboard />}
-/>
+          path="/manager/dashboard"
+          element={<ManagerDashboard />}
+        />
 
-<Route
-  path="/manager/employees"
-  element={<ManagerEmployees />}
-/>
+        <Route
+          path="/manager/employees"
+          element={<ManagerEmployees />}
+        />
 
-<Route
-  path="/manager/departments"
-  element={<ManagerDepartments />}
-/>
+        <Route
+          path="/manager/departments"
+          element={<ManagerDepartments />}
+        />
 
-<Route
-  path="/manager/attendance"
-  element={<ManagerAttendance />}
-/>
+        <Route
+          path="/manager/attendance"
+          element={<ManagerAttendance />}
+        />
 
-<Route
-  path="/manager/leaveapprovals"
-  element={<ManagerLeaveApprovals />}
-/>
+        <Route
+          path="/manager/leaveapprovals"
+          element={<ManagerLeaveApprovals />}
+        />
 
-<Route
-  path="/manager/tasks"
-  element={<ManagerTasks />}
-/>
+        <Route
+          path="/manager/tasks"
+          element={<ManagerTasks />}
+        />
 
-<Route
-  path="/manager/performance"
-  element={<ManagerPerformance />}
-/>
+        <Route
+          path="/manager/performance"
+          element={<ManagerPerformance />}
+        />
 
-<Route
-  path="/manager/reports"
-  element={<ManagerReports />}
-/>
+        <Route
+          path="/manager/reports"
+          element={<ManagerReports />}
+        />
 
-<Route
-  path="/manager/notifications"
-  element={<ManagerNotifications />}
-/>
+        <Route
+          path="/manager/notifications"
+          element={<ManagerNotifications />}
+        />
 
-<Route
-  path="/manager/documents"
-  element={<ManagerDocuments />}
-/>
+        <Route
+          path="/manager/documents"
+          element={<ManagerDocuments />}
+        />
 
         {/* ================= EMPLOYEE ================= */}
 
         <Route
-          path="/employee/Dashboard"
+          path="/employee/dashboard"
           element={<EmployeeDashboard />}
         />
 
@@ -240,17 +272,11 @@ function App() {
           element={<EmployeeActivityLogs />}
         />
 
-
-        {/* ================= DEFAULT ================= */}
-
-        <Route
-          path="/"
-          element={<Navigate to="/login" replace />}
-        />
+        {/* ================= FALLBACK ================= */}
 
         <Route
           path="*"
-          element={<Navigate to="/login" replace />}
+          element={<Navigate to="/" replace />}
         />
 
       </Routes>
