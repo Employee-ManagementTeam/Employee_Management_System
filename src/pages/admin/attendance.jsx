@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from "react";
 import Sidebar from "../../components/sidebar";
 import Navbar from "../../components/navbar";
@@ -16,7 +15,6 @@ function Attendance() {
 
   const [search, setSearch] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
-
   const [employeeId, setEmployeeId] = useState("");
 
   const [loading, setLoading] = useState(true);
@@ -25,11 +23,8 @@ function Attendance() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  // Convert different backend response formats into an array
   const getArray = (data, keys = []) => {
-    if (Array.isArray(data)) {
-      return data;
-    }
+    if (Array.isArray(data)) return data;
 
     if (data && Array.isArray(data.data)) {
       return data.data;
@@ -44,31 +39,32 @@ function Attendance() {
     return [];
   };
 
-  // Load employees and attendance
   const loadData = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const [employeesResponse, attendanceResponse] = await Promise.all([
-        getEmployees(),
-        getAttendance(),
-      ]);
+      const [employeesResponse, attendanceResponse] =
+        await Promise.all([
+          getEmployees(),
+          getAttendance(),
+        ]);
 
-      const employeeList = getArray(employeesResponse, [
-        "employees",
-      ]);
+      setEmployees(
+        getArray(employeesResponse, ["employees"])
+      );
 
-      const attendanceList = getArray(attendanceResponse, [
-        "attendance",
-        "records",
-      ]);
-
-      setEmployees(employeeList);
-      setAttendance(attendanceList);
+      setAttendance(
+        getArray(attendanceResponse, [
+          "attendance",
+          "records",
+        ])
+      );
     } catch (err) {
       console.error(err);
-      setError(err.message || "Failed to load attendance data.");
+      setError(
+        err.message || "Failed to load attendance data."
+      );
     } finally {
       setLoading(false);
     }
@@ -78,24 +74,26 @@ function Attendance() {
     loadData();
   }, []);
 
-  // Refresh attendance only
   const refreshAttendance = async () => {
     try {
+      setError("");
+
       const response = await getAttendance();
 
-      const attendanceList = getArray(response, [
-        "attendance",
-        "records",
-      ]);
-
-      setAttendance(attendanceList);
+      setAttendance(
+        getArray(response, [
+          "attendance",
+          "records",
+        ])
+      );
     } catch (err) {
       console.error(err);
-      setError(err.message || "Failed to refresh attendance.");
+      setError(
+        err.message || "Failed to refresh attendance."
+      );
     }
   };
 
-  // Check in
   const handleCheckIn = async () => {
     const id = employeeId.trim();
 
@@ -113,21 +111,21 @@ function Attendance() {
       await checkIn(id);
 
       setMessage(
-        "Employee " + id + " checked in successfully."
+        `Employee ${id} checked in successfully.`
       );
 
       setEmployeeId("");
-
       await refreshAttendance();
     } catch (err) {
       console.error(err);
-      setError(err.message || "Check-in failed.");
+      setError(
+        err.message || "Check-in failed."
+      );
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Check out
   const handleCheckOut = async () => {
     const id = employeeId.trim();
 
@@ -145,50 +143,42 @@ function Attendance() {
       await checkOut(id);
 
       setMessage(
-        "Employee " + id + " checked out successfully."
+        `Employee ${id} checked out successfully.`
       );
 
       setEmployeeId("");
-
       await refreshAttendance();
     } catch (err) {
       console.error(err);
-      setError(err.message || "Check-out failed.");
+      setError(
+        err.message || "Check-out failed."
+      );
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Get employee ID from different possible backend field names
-  const getEmployeeId = (employee) => {
+  const getEmployeeId = (employee) =>
+    employee.employee_id ||
+    employee.id ||
+    employee._id ||
+    employee.employee_code ||
+    "";
+
+  const getEmployeeName = (employee) => {
+    if (employee.name) return employee.name;
+
+    const fullName = `${employee.first_name || ""} ${
+      employee.last_name || ""
+    }`.trim();
+
     return (
-      employee.employee_id ||
-      employee.id ||
-      employee._id ||
-      employee.employee_code ||
-      ""
+      fullName ||
+      employee.username ||
+      "Unknown Employee"
     );
   };
 
-  // Get employee name
-  const getEmployeeName = (employee) => {
-    if (employee.name) {
-      return employee.name;
-    }
-
-    const firstName = employee.first_name || "";
-    const lastName = employee.last_name || "";
-
-    const fullName = (firstName + " " + lastName).trim();
-
-    if (fullName) {
-      return fullName;
-    }
-
-    return employee.username || "Unknown Employee";
-  };
-
-  // Get attendance employee ID
   const getAttendanceEmployeeId = (record) => {
     if (record.employee_id) {
       return String(record.employee_id);
@@ -214,404 +204,600 @@ function Attendance() {
     return "";
   };
 
-  // Get attendance date
-  const getAttendanceDate = (record) => {
-    return (
-      record.date ||
-      record.attendance_date ||
-      record.check_in_date ||
-      record.created_at ||
-      record.createdAt ||
-      ""
-    );
-  };
+  const getAttendanceDate = (record) =>
+    record?.date ||
+    record?.attendance_date ||
+    record?.check_in_date ||
+    record?.created_at ||
+    record?.createdAt ||
+    "";
 
-  // Get attendance status
   const getAttendanceStatus = (record) => {
-    const status = String(record.status || "").toLowerCase();
+    const status = String(
+      record?.status || ""
+    ).toLowerCase();
 
-    if (status === "present") {
-      return "Present";
-    }
+    if (status === "present") return "Present";
+    if (status === "absent") return "Absent";
+    if (status === "leave") return "Leave";
 
-    if (status === "absent") {
-      return "Absent";
-    }
-
-    if (status === "leave") {
-      return "Leave";
-    }
-
-    if (record.check_out || record.checkout_time) {
+    if (record?.check_out || record?.checkout_time) {
       return "Checked Out";
     }
 
-    if (record.check_in || record.checkin_time) {
+    if (record?.check_in || record?.checkin_time) {
       return "Present";
     }
 
     return "Not Marked";
   };
 
-  // Filter employees
   const filteredEmployees = useMemo(() => {
+    const searchValue = search
+      .toLowerCase()
+      .trim();
+
     return employees.filter((employee) => {
-      const id = String(getEmployeeId(employee)).toLowerCase();
-      const name = getEmployeeName(employee).toLowerCase();
+      const id = String(
+        getEmployeeId(employee)
+      ).toLowerCase();
 
-      const searchValue = search.toLowerCase().trim();
+      const name =
+        getEmployeeName(employee).toLowerCase();
 
-      const matchesSearch =
+      return (
         !searchValue ||
         id.includes(searchValue) ||
-        name.includes(searchValue);
-
-      return matchesSearch;
+        name.includes(searchValue)
+      );
     });
   }, [employees, search]);
 
-  // Find attendance record for employee
   const getEmployeeAttendance = (employee) => {
-    const id = String(getEmployeeId(employee));
+    const id = String(
+      getEmployeeId(employee)
+    );
 
-    let records = attendance.filter((record) => {
-      return getAttendanceEmployeeId(record) === id;
-    });
+    let records = attendance.filter(
+      (record) =>
+        getAttendanceEmployeeId(record) === id
+    );
 
     if (selectedDate) {
       records = records.filter((record) => {
-        const recordDate = getAttendanceDate(record);
+        const recordDate =
+          getAttendanceDate(record);
 
-        if (!recordDate) {
-          return false;
-        }
-
-        return String(recordDate).startsWith(selectedDate);
+        return (
+          recordDate &&
+          String(recordDate).startsWith(
+            selectedDate
+          )
+        );
       });
     }
 
-    if (records.length === 0) {
-      return null;
-    }
-
-    return records[records.length - 1];
+    return records.length
+      ? records[records.length - 1]
+      : null;
   };
 
-  // Summary calculations
-  const presentCount = employees.filter((employee) => {
-    const record = getEmployeeAttendance(employee);
+  const getCount = (status) =>
+    employees.filter((employee) => {
+      const record =
+        getEmployeeAttendance(employee);
 
-    if (!record) {
-      return false;
+      return (
+        record &&
+        getAttendanceStatus(record) === status
+      );
+    }).length;
+
+  const presentCount = getCount("Present");
+  const checkedOutCount = getCount("Checked Out");
+  const leaveCount = getCount("Leave");
+  const absentCount = getCount("Absent");
+
+  const notMarkedCount = Math.max(
+    0,
+    employees.length -
+      presentCount -
+      checkedOutCount -
+      leaveCount -
+      absentCount
+  );
+
+  const getStatusStyle = (status) => {
+    if (status === "Present") {
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
     }
 
-    const status = getAttendanceStatus(record);
-
-    return status === "Present";
-  }).length;
-
-  const checkedOutCount = employees.filter((employee) => {
-    const record = getEmployeeAttendance(employee);
-
-    if (!record) {
-      return false;
+    if (status === "Checked Out") {
+      return "border-blue-200 bg-blue-50 text-blue-700";
     }
 
-    return getAttendanceStatus(record) === "Checked Out";
-  }).length;
+    if (status === "Leave") {
+      return "border-amber-200 bg-amber-50 text-amber-700";
+    }
 
-  const notMarkedCount =
-    employees.length - presentCount - checkedOutCount;
+    if (status === "Absent") {
+      return "border-red-200 bg-red-50 text-red-700";
+    }
+
+    return "border-slate-200 bg-slate-100 text-slate-600";
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-slate-50">
       <Sidebar />
-
       <Navbar />
 
-      <main className="ml-64 pt-20 min-h-screen">
-        <div className="p-6">
-          {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">
-              Attendance Management
-            </h1>
+      <main className="ml-64 pt-20">
+        <div className="p-8">
+          <div className="mb-8 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+            <div>
+              <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-orange-600">
+                Workforce Management
+              </p>
 
-            <p className="mt-1 text-gray-500">
-              Track employee check-in and check-out records
-            </p>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                Attendance Management
+              </h1>
+
+              <p className="mt-2 text-slate-500">
+                Track employee check-in, check-out and daily attendance.
+              </p>
+            </div>
+
+            <button
+              onClick={loadData}
+              disabled={loading}
+              className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-orange-200 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Refreshing..." : "Refresh"}
+            </button>
           </div>
 
-          {/* Messages */}
           {message && (
-            <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-700">
+            <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-700">
               {message}
             </div>
           )}
 
           {error && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+            <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">
               {error}
             </div>
           )}
 
-          {/* Summary Cards */}
-          <div className="mb-6 grid grid-cols-1 gap-5 md:grid-cols-4">
-            <div className="rounded-xl bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-gray-500">
-                Total Employees
-              </p>
-
-              <h2 className="mt-2 text-3xl font-bold text-orange-600">
-                {employees.length}
-              </h2>
-            </div>
-
-            <div className="rounded-xl bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-gray-500">
-                Present
-              </p>
-
-              <h2 className="mt-2 text-3xl font-bold text-green-600">
-                {presentCount}
-              </h2>
-            </div>
-
-            <div className="rounded-xl bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-gray-500">
-                Checked Out
-              </p>
-
-              <h2 className="mt-2 text-3xl font-bold text-blue-600">
-                {checkedOutCount}
-              </h2>
-            </div>
-
-            <div className="rounded-xl bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-gray-500">
-                Not Marked
-              </p>
-
-              <h2 className="mt-2 text-3xl font-bold text-gray-600">
-                {notMarkedCount}
-              </h2>
-            </div>
+          <div className="mb-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
+            <SummaryCard
+              title="Total Employees"
+              value={employees.length}
+              icon="👥"
+            />
+            <SummaryCard
+              title="Present"
+              value={presentCount}
+              icon="✓"
+            />
+            <SummaryCard
+              title="Checked Out"
+              value={checkedOutCount}
+              icon="↗"
+            />
+            <SummaryCard
+              title="On Leave"
+              value={leaveCount}
+              icon="📅"
+            />
+            <SummaryCard
+              title="Not Marked"
+              value={notMarkedCount}
+              icon="−"
+            />
           </div>
 
-          {/* Manual Check In / Check Out */}
-          <div className="mb-6 rounded-xl bg-white p-6 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-xl font-bold text-gray-800">
+          <section className="mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-200 px-6 py-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-orange-600">
+                Attendance Control
+              </p>
+
+              <h2 className="mt-1 text-xl font-bold text-slate-900">
                 Mark Attendance
               </h2>
 
-              <p className="mt-1 text-sm text-gray-500">
-                Enter the employee ID to check in or check out.
+              <p className="mt-1 text-sm text-slate-500">
+                Enter an employee ID to record check-in or check-out.
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 md:flex-row">
-              <input
-                type="text"
-                value={employeeId}
-                onChange={(e) => setEmployeeId(e.target.value)}
-                placeholder="Enter Employee ID"
-                className="flex-1 rounded-lg border border-gray-300 px-4 py-3 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
-              />
+            <div className="p-6">
+              <div className="flex flex-col gap-3 lg:flex-row">
+                <input
+                  type="text"
+                  value={employeeId}
+                  onChange={(e) =>
+                    setEmployeeId(e.target.value)
+                  }
+                  placeholder="Enter Employee ID"
+                  className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
+                />
 
-              <button
-                onClick={handleCheckIn}
-                disabled={actionLoading}
-                className="rounded-lg bg-orange-500 px-6 py-3 font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {actionLoading ? "Processing..." : "Check In"}
-              </button>
+                <button
+                  onClick={handleCheckIn}
+                  disabled={actionLoading}
+                  className="rounded-xl bg-orange-600 px-7 py-3 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {actionLoading
+                    ? "Processing..."
+                    : "Check In"}
+                </button>
 
-              <button
-                onClick={handleCheckOut}
-                disabled={actionLoading}
-                className="rounded-lg bg-gray-800 px-6 py-3 font-semibold text-white transition hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {actionLoading ? "Processing..." : "Check Out"}
-              </button>
-
-              <button
-                onClick={loadData}
-                disabled={loading}
-                className="rounded-lg border border-orange-500 px-6 py-3 font-semibold text-orange-600 transition hover:bg-orange-50 disabled:opacity-60"
-              >
-                Refresh
-              </button>
+                <button
+                  onClick={handleCheckOut}
+                  disabled={actionLoading}
+                  className="rounded-xl bg-slate-800 px-7 py-3 text-sm font-semibold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {actionLoading
+                    ? "Processing..."
+                    : "Check Out"}
+                </button>
+              </div>
             </div>
-          </div>
+          </section>
 
-          {/* Search and Date */}
-          <div className="mb-6 rounded-xl bg-white p-5 shadow-sm">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
+          <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end">
+              <div className="flex-1">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Search Employee
                 </label>
 
                 <input
                   type="text"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) =>
+                    setSearch(e.target.value)
+                  }
                   placeholder="Search by employee ID or name"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
                 />
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
+              <div className="w-full lg:max-w-xs">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Attendance Date
                 </label>
 
                 <input
                   type="date"
                   value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                  onChange={(e) =>
+                    setSelectedDate(
+                      e.target.value
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100"
                 />
               </div>
-            </div>
-          </div>
 
-          {/* Attendance Table */}
-          <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-            <div className="border-b border-gray-200 px-6 py-5">
-              <h2 className="text-xl font-bold text-gray-800">
-                Employee Attendance
-              </h2>
+              {(search || selectedDate) && (
+                <button
+                  onClick={() => {
+                    setSearch("");
+                    setSelectedDate("");
+                  }}
+                  className="rounded-xl bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-200"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-200 px-6 py-5">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">
+                    Employee Attendance
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    {filteredEmployees.length} employee
+                    {filteredEmployees.length !== 1
+                      ? "s"
+                      : ""}{" "}
+                    displayed
+                  </p>
+                </div>
+
+                <span className="w-fit rounded-full bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700">
+                  Live Records
+                </span>
+              </div>
             </div>
 
             {loading ? (
-              <div className="p-10 text-center text-gray-500">
-                Loading attendance...
+              <div className="p-12 text-center">
+                <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-orange-100 border-t-orange-600" />
+
+                <p className="text-sm text-slate-500">
+                  Loading attendance...
+                </p>
               </div>
             ) : filteredEmployees.length === 0 ? (
-              <div className="p-10 text-center text-gray-500">
-                No employees found.
+              <div className="p-12 text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-50 text-2xl">
+                  👥
+                </div>
+
+                <h3 className="text-lg font-bold text-slate-800">
+                  No employees found
+                </h3>
+
+                <p className="mt-2 text-sm text-slate-500">
+                  Try changing your search or date filter.
+                </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-orange-50 text-left">
-                      <th className="px-6 py-4 text-sm font-bold text-gray-700">
-                        Employee ID
-                      </th>
+              <>
+                <div className="hidden overflow-x-auto lg:block">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-50">
+                      <tr className="border-b border-slate-200 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        <th className="px-6 py-4">
+                          Employee
+                        </th>
+                        <th className="px-6 py-4">
+                          Department
+                        </th>
+                        <th className="px-6 py-4">
+                          Check In
+                        </th>
+                        <th className="px-6 py-4">
+                          Check Out
+                        </th>
+                        <th className="px-6 py-4">
+                          Status
+                        </th>
+                      </tr>
+                    </thead>
 
-                      <th className="px-6 py-4 text-sm font-bold text-gray-700">
-                        Employee Name
-                      </th>
+                    <tbody>
+                      {filteredEmployees.map(
+                        (employee) => {
+                          const record =
+                            getEmployeeAttendance(
+                              employee
+                            );
 
-                      <th className="px-6 py-4 text-sm font-bold text-gray-700">
-                        Department
-                      </th>
+                          const status = record
+                            ? getAttendanceStatus(
+                                record
+                              )
+                            : "Not Marked";
 
-                      <th className="px-6 py-4 text-sm font-bold text-gray-700">
-                        Check In
-                      </th>
+                          const checkInTime =
+                            record?.check_in ||
+                            record?.checkin_time ||
+                            record?.check_in_time ||
+                            "-";
 
-                      <th className="px-6 py-4 text-sm font-bold text-gray-700">
-                        Check Out
-                      </th>
+                          const checkOutTime =
+                            record?.check_out ||
+                            record?.checkout_time ||
+                            record?.check_out_time ||
+                            "-";
 
-                      <th className="px-6 py-4 text-sm font-bold text-gray-700">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
+                          return (
+                            <tr
+                              key={String(
+                                getEmployeeId(employee)
+                              )}
+                              className="border-b border-slate-100 transition hover:bg-orange-50/40"
+                            >
+                              <td className="px-6 py-5">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-sm font-bold text-orange-600">
+                                    {getEmployeeName(
+                                      employee
+                                    )
+                                      .charAt(0)
+                                      .toUpperCase()}
+                                  </div>
 
-                  <tbody>
-                    {filteredEmployees.map((employee) => {
+                                  <div>
+                                    <p className="font-semibold text-slate-800">
+                                      {getEmployeeName(
+                                        employee
+                                      )}
+                                    </p>
+
+                                    <p className="mt-1 text-xs text-slate-400">
+                                      {getEmployeeId(
+                                        employee
+                                      ) || "-"}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="px-6 py-5 text-sm text-slate-600">
+                                {employee.department ||
+                                  "-"}
+                              </td>
+
+                              <td className="px-6 py-5 text-sm text-slate-600">
+                                {checkInTime}
+                              </td>
+
+                              <td className="px-6 py-5 text-sm text-slate-600">
+                                {checkOutTime}
+                              </td>
+
+                              <td className="px-6 py-5">
+                                <span
+                                  className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getStatusStyle(
+                                    status
+                                  )}`}
+                                >
+                                  {status}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        }
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="space-y-4 p-4 lg:hidden">
+                  {filteredEmployees.map(
+                    (employee) => {
                       const record =
-                        getEmployeeAttendance(employee);
+                        getEmployeeAttendance(
+                          employee
+                        );
 
                       const status = record
-                        ? getAttendanceStatus(record)
+                        ? getAttendanceStatus(
+                            record
+                          )
                         : "Not Marked";
 
-                      const checkInTime =
-                        record?.check_in ||
-                        record?.checkin_time ||
-                        record?.check_in_time ||
-                        "-";
-
-                      const checkOutTime =
-                        record?.check_out ||
-                        record?.checkout_time ||
-                        record?.check_out_time ||
-                        "-";
-
-                      let statusClass =
-                        "bg-gray-100 text-gray-600";
-
-                      if (status === "Present") {
-                        statusClass =
-                          "bg-green-100 text-green-700";
-                      } else if (status === "Checked Out") {
-                        statusClass =
-                          "bg-blue-100 text-blue-700";
-                      } else if (status === "Leave") {
-                        statusClass =
-                          "bg-yellow-100 text-yellow-700";
-                      } else if (status === "Absent") {
-                        statusClass =
-                          "bg-red-100 text-red-700";
-                      }
-
                       return (
-                        <tr
+                        <div
                           key={String(
                             getEmployeeId(employee)
                           )}
-                          className="border-t border-gray-100 hover:bg-orange-50"
+                          className="rounded-2xl border border-slate-200 p-5"
                         >
-                          <td className="px-6 py-4 font-semibold text-gray-800">
-                            {getEmployeeId(employee) || "-"}
-                          </td>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-50 font-bold text-orange-600">
+                                {getEmployeeName(
+                                  employee
+                                )
+                                  .charAt(0)
+                                  .toUpperCase()}
+                              </div>
 
-                          <td className="px-6 py-4 text-gray-700">
-                            {getEmployeeName(employee)}
-                          </td>
+                              <div>
+                                <p className="font-bold text-slate-900">
+                                  {getEmployeeName(
+                                    employee
+                                  )}
+                                </p>
 
-                          <td className="px-6 py-4 text-gray-600">
-                            {employee.department || "-"}
-                          </td>
+                                <p className="mt-1 text-xs text-slate-400">
+                                  {getEmployeeId(
+                                    employee
+                                  ) || "-"}
+                                </p>
+                              </div>
+                            </div>
 
-                          <td className="px-6 py-4 text-gray-600">
-                            {checkInTime}
-                          </td>
-
-                          <td className="px-6 py-4 text-gray-600">
-                            {checkOutTime}
-                          </td>
-
-                          <td className="px-6 py-4">
                             <span
-                              className={
-                                "inline-flex rounded-full px-3 py-1 text-xs font-bold " +
-                                statusClass
-                              }
+                              className={`rounded-full border px-3 py-1 text-xs font-semibold ${getStatusStyle(
+                                status
+                              )}`}
                             >
                               {status}
                             </span>
-                          </td>
-                        </tr>
+                          </div>
+
+                          <div className="mt-5 grid grid-cols-2 gap-4">
+                            <InfoItem
+                              label="Department"
+                              value={
+                                employee.department ||
+                                "-"
+                              }
+                            />
+
+                            <InfoItem
+                              label="Check In"
+                              value={
+                                record?.check_in ||
+                                record?.checkin_time ||
+                                record?.check_in_time ||
+                                "-"
+                              }
+                            />
+
+                            <InfoItem
+                              label="Check Out"
+                              value={
+                                record?.check_out ||
+                                record?.checkout_time ||
+                                record?.check_out_time ||
+                                "-"
+                              }
+                            />
+
+                            <InfoItem
+                              label="Date"
+                              value={
+                                selectedDate ||
+                                getAttendanceDate(
+                                  record
+                                ) ||
+                                "-"
+                              }
+                            />
+                          </div>
+                        </div>
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    }
+                  )}
+                </div>
+              </>
             )}
-          </div>
+          </section>
         </div>
       </main>
     </div>
   );
 }
 
-export default Attendance;
+function SummaryCard({ title, value, icon }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-slate-500">
+            {title}
+          </p>
 
+          <p className="mt-2 text-2xl font-bold text-slate-900">
+            {value}
+          </p>
+        </div>
+
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-lg">
+          {icon}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InfoItem({ label, value }) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+
+      <p className="mt-1 text-sm font-semibold text-slate-700">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+export default Attendance;

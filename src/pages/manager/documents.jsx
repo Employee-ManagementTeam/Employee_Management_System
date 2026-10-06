@@ -1,64 +1,67 @@
 import { useEffect, useState } from "react";
 import ManagerSidebar from "../../components/ManagerSidebar";
-import Navbar from "../../components/navbar";
+import Navbar from "../../components/Navbar";
 
 import {
-  getDocuments,
-  deleteDocument,
+  getAttendanceReport,
+  getLeavesReport,
+  getPayrollReport,
 } from "../../api/api";
 
-function Documents() {
-  const [documents, setDocuments] = useState([]);
+function Reports() {
+  const [attendance, setAttendance] = useState([]);
+  const [leaves, setLeaves] = useState([]);
+  const [payroll, setPayroll] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
 
   useEffect(() => {
-    loadDocuments();
+    loadReports();
   }, []);
 
-  const loadDocuments = async () => {
+  const loadReports = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const response = await getDocuments();
+      const [
+        attendanceResponse,
+        leavesResponse,
+        payrollResponse,
+      ] = await Promise.all([
+        getAttendanceReport(),
+        getLeavesReport(),
+        getPayrollReport(),
+      ]);
 
-      setDocuments(
-        response?.documents ||
-          response?.data ||
-          (Array.isArray(response) ? response : [])
+      setAttendance(
+        attendanceResponse?.attendance ||
+          attendanceResponse?.data ||
+          (Array.isArray(attendanceResponse)
+            ? attendanceResponse
+            : [])
+      );
+
+      setLeaves(
+        leavesResponse?.leaves ||
+          leavesResponse?.data ||
+          (Array.isArray(leavesResponse)
+            ? leavesResponse
+            : [])
+      );
+
+      setPayroll(
+        payrollResponse?.payroll ||
+          payrollResponse?.data ||
+          (Array.isArray(payrollResponse)
+            ? payrollResponse
+            : [])
       );
     } catch (err) {
-      setError(
-        err.message || "Failed to load documents."
-      );
+      setError(err.message || "Failed to load reports.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const removeDocument = async (document) => {
-    const id =
-      document.id || document._id;
-
-    if (!window.confirm("Delete this document?")) {
-      return;
-    }
-
-    try {
-      setError("");
-      setMessage("");
-
-      await deleteDocument(id);
-
-      setMessage("Document deleted successfully.");
-      await loadDocuments();
-    } catch (err) {
-      setError(
-        err.message || "Failed to delete document."
-      );
     }
   };
 
@@ -70,18 +73,12 @@ function Documents() {
       <main className="ml-64 pt-20">
         <div className="p-6">
           <h1 className="text-3xl font-bold text-gray-800">
-            Documents
+            Reports
           </h1>
 
           <p className="mt-1 text-gray-500">
-            View employee documents.
+            View attendance, leave and payroll reports.
           </p>
-
-          {message && (
-            <div className="mt-5 rounded-lg bg-green-50 p-4 text-green-600">
-              {message}
-            </div>
-          )}
 
           {error && (
             <div className="mt-5 rounded-lg bg-red-50 p-4 text-red-600">
@@ -89,86 +86,100 @@ function Documents() {
             </div>
           )}
 
-          <div className="mt-6 overflow-x-auto rounded-xl bg-white shadow-sm">
-            {loading ? (
-              <div className="p-8 text-center text-gray-500">
-                Loading documents...
-              </div>
-            ) : documents.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                No documents found.
-              </div>
-            ) : (
-              <table className="w-full text-left">
-                <thead className="bg-gray-50 text-sm text-gray-500">
-                  <tr>
-                    <th className="px-5 py-3">
-                      Employee
-                    </th>
+          {loading ? (
+            <div className="mt-6 rounded-xl bg-white p-10 text-center text-gray-500 shadow-sm">
+              Loading reports...
+            </div>
+          ) : (
+            <div className="mt-6 space-y-6">
+              <ReportSection
+                title="Attendance Report"
+                data={attendance}
+                columns={[
+                  "employee_id",
+                  "date",
+                  "check_in",
+                  "check_out",
+                  "status",
+                ]}
+              />
 
-                    <th className="px-5 py-3">
-                      File Name
-                    </th>
+              <ReportSection
+                title="Leave Report"
+                data={leaves}
+                columns={[
+                  "employee_id",
+                  "leave_type",
+                  "start_date",
+                  "end_date",
+                  "status",
+                ]}
+              />
 
-                    <th className="px-5 py-3">
-                      Uploaded
-                    </th>
-
-                    <th className="px-5 py-3">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {documents.map((document, index) => (
-                    <tr
-                      key={
-                        document.id ||
-                        document._id ||
-                        index
-                      }
-                      className="border-t border-gray-100"
-                    >
-                      <td className="px-5 py-4">
-                        {document.employee_name ||
-                          document.employee_id ||
-                          "-"}
-                      </td>
-
-                      <td className="px-5 py-4">
-                        {document.file_name ||
-                          document.filename ||
-                          document.name ||
-                          "-"}
-                      </td>
-
-                      <td className="px-5 py-4">
-                        {document.created_at ||
-                          document.uploaded_at ||
-                          "-"}
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <button
-                          onClick={() =>
-                            removeDocument(document)
-                          }
-                          className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-500"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+              <ReportSection
+                title="Payroll Report"
+                data={payroll}
+                columns={[
+                  "employee_id",
+                  "month",
+                  "amount",
+                  "status",
+                ]}
+              />
+            </div>
+          )}
         </div>
       </main>
     </div>
   );
 }
 
-export default Documents;
+function ReportSection({ title, data, columns }) {
+  return (
+    <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
+      <div className="border-b border-gray-100 p-5">
+        <h2 className="text-lg font-semibold text-gray-800">
+          {title}
+        </h2>
+      </div>
+
+      {data.length === 0 ? (
+        <div className="p-8 text-center text-gray-500">
+          No records found.
+        </div>
+      ) : (
+        <table className="w-full text-left">
+          <thead className="bg-gray-50 text-sm text-gray-500">
+            <tr>
+              {columns.map((column) => (
+                <th key={column} className="px-5 py-3">
+                  {column.replaceAll("_", " ")}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {data.map((item, index) => (
+              <tr
+                key={item.id || item._id || index}
+                className="border-t border-gray-100"
+              >
+                {columns.map((column) => (
+                  <td
+                    key={column}
+                    className="px-5 py-4"
+                  >
+                    {item[column] ?? "-"}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+export default Reports;

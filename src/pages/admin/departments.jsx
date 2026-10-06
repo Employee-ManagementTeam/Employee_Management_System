@@ -48,20 +48,18 @@ function Department() {
       setMessage("");
 
       if (editingId) {
-        await updateDepartment(editingId, {
-          name,
-          description,
-        });
-
-        setMessage("Department updated successfully.");
-      } else {
-        await createDepartment({
-          name,
-          description,
-        });
-
-        setMessage("Department created successfully.");
-      }
+  await updateDepartment(editingId, {
+    department_name: name,
+    description,
+  });
+  setMessage("Department updated successfully.");
+} else {
+  await createDepartment({
+    department_name: name,
+    description,
+  });
+  setMessage("Department created successfully.");
+}
 
       setName("");
       setDescription("");
