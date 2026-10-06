@@ -139,7 +139,8 @@ const roles = [
 function Landing() {
   return (
     <div className="min-h-screen bg-[#fafafa] text-slate-900">
-      {/* Announcement bar */}
+
+      {/* ================= ANNOUNCEMENT ================= */}
       <div className="border-b border-orange-100 bg-[#fff7f2]">
         <div className="mx-auto flex max-w-7xl items-center justify-center px-6 py-2.5 text-center">
           <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
@@ -153,9 +154,10 @@ function Landing() {
         </div>
       </div>
 
-      {/* Navbar */}
+      {/* ================= NAVBAR ================= */}
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
+
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-600 shadow-md shadow-orange-100">
@@ -185,26 +187,40 @@ function Landing() {
           </Link>
 
           {/* Navigation */}
-          <nav className="hidden items-center gap-8 md:flex">
+          <nav className="hidden items-center gap-7 md:flex">
+            <a
+              href="#home"
+              className="text-sm font-semibold text-slate-600 transition hover:text-orange-600"
+            >
+              Home
+            </a>
+
+            <a
+              href="#about"
+              className="text-sm font-semibold text-slate-600 transition hover:text-orange-600"
+            >
+              About Us
+            </a>
+
             <a
               href="#features"
-              className="text-sm font-medium text-slate-600 transition hover:text-orange-600"
+              className="text-sm font-semibold text-slate-600 transition hover:text-orange-600"
             >
               Features
             </a>
 
             <a
               href="#roles"
-              className="text-sm font-medium text-slate-600 transition hover:text-orange-600"
+              className="text-sm font-semibold text-slate-600 transition hover:text-orange-600"
             >
               Roles
             </a>
 
             <a
-              href="#portal"
-              className="text-sm font-medium text-slate-600 transition hover:text-orange-600"
+              href="#contact"
+              className="text-sm font-semibold text-slate-600 transition hover:text-orange-600"
             >
-              People Portal
+              Contact
             </a>
           </nav>
 
@@ -236,14 +252,18 @@ function Landing() {
         </div>
       </header>
 
-      {/* Hero */}
       <main>
-        <section className="relative overflow-hidden border-b border-slate-200 bg-white">
-          {/* subtle decorative shapes */}
+
+        {/* ================= HOME / HERO ================= */}
+        <section
+          id="home"
+          className="relative overflow-hidden border-b border-slate-200 bg-white"
+        >
           <div className="pointer-events-none absolute -left-32 top-24 h-72 w-72 rounded-full bg-orange-100/30 blur-3xl" />
           <div className="pointer-events-none absolute right-0 top-0 h-80 w-80 rounded-full bg-orange-50/40 blur-3xl" />
 
           <div className="relative mx-auto grid max-w-7xl items-center gap-14 px-6 py-20 lg:grid-cols-2 lg:px-8 lg:py-24">
+
             {/* Hero content */}
             <div>
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-orange-100 bg-orange-50 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-orange-700">
@@ -264,7 +284,6 @@ function Landing() {
                 in one centralized HR platform.
               </p>
 
-              {/* CTA */}
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
                   to="/login"
@@ -290,7 +309,6 @@ function Landing() {
                 </a>
               </div>
 
-              {/* Benefits */}
               <div className="mt-9 flex flex-wrap gap-x-7 gap-y-3">
                 {[
                   "Role-based access",
@@ -310,11 +328,11 @@ function Landing() {
               </div>
             </div>
 
-            {/* Professional illustration panel */}
+            {/* Hero visual */}
             <div className="relative">
               <div className="relative mx-auto max-w-lg">
                 <div className="rounded-[2rem] border border-slate-200 bg-[#fcfcfc] p-6 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.3)] sm:p-8">
-                  {/* top */}
+
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-orange-600">
@@ -344,7 +362,6 @@ function Landing() {
                     </div>
                   </div>
 
-                  {/* people visualization */}
                   <div className="relative mt-8 h-52 overflow-hidden rounded-2xl bg-white">
                     <div className="absolute left-8 top-8 h-32 w-32 rounded-full bg-orange-50" />
                     <div className="absolute bottom-0 right-3 h-28 w-28 rounded-full bg-orange-100/70" />
@@ -388,12 +405,10 @@ function Landing() {
                       </svg>
                     </div>
 
-                    {/* connector lines */}
                     <div className="absolute left-[108px] top-[87px] h-[2px] w-[48px] bg-orange-200" />
                     <div className="absolute left-[86px] top-[116px] h-[52px] w-[2px] bg-orange-200" />
                     <div className="absolute left-[109px] bottom-[49px] h-[2px] w-[48px] bg-orange-200" />
 
-                    {/* floating label */}
                     <div className="absolute bottom-4 right-4 rounded-xl border border-slate-100 bg-white px-4 py-3 shadow-lg">
                       <div className="flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full bg-green-500" />
@@ -401,13 +416,13 @@ function Landing() {
                           Team connected
                         </span>
                       </div>
+
                       <p className="mt-1 text-[10px] text-slate-400">
                         One system for HR operations
                       </p>
                     </div>
                   </div>
 
-                  {/* service cards */}
                   <div className="mt-5 grid grid-cols-3 gap-3">
                     {[
                       ["24/7", "Access"],
@@ -421,6 +436,7 @@ function Landing() {
                         <p className="text-sm font-extrabold text-orange-600">
                           {value}
                         </p>
+
                         <p className="mt-1 text-[10px] text-slate-400">
                           {label}
                         </p>
@@ -429,7 +445,6 @@ function Landing() {
                   </div>
                 </div>
 
-                {/* subtle floating card */}
                 <div className="absolute -bottom-5 -left-4 rounded-2xl border border-orange-100 bg-white px-4 py-3 shadow-xl sm:-left-6">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-50 text-green-600">
@@ -452,7 +467,169 @@ function Landing() {
           </div>
         </section>
 
-        {/* Stats strip */}
+        {/* ================= ABOUT US ================= */}
+        <section
+          id="about"
+          className="border-b border-slate-200 bg-[#fffaf7]"
+        >
+          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+            <div className="grid items-center gap-12 lg:grid-cols-2">
+
+              <div>
+                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-600">
+                  About Us
+                </span>
+
+                <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+                  Making employee management
+                  <span className="block text-orange-600">
+                    simpler and smarter.
+                  </span>
+                </h2>
+
+                <p className="mt-5 text-sm leading-7 text-slate-500 sm:text-base">
+                   EmployeeMS is a web-based application that helps organizations manage employee information, departments, attendance, leave, tasks, performance, and payroll-related records through a centralized platform. It provides separate dashboards for administrators, managers, and employees to simplify daily HR and workforce management.
+                </p>
+
+                <p className="mt-4 text-sm leading-7 text-slate-500 sm:text-base">
+                  From employee records and attendance to leave management,
+                  tasks, performance, documents, payroll, notifications, and
+                  reports, the system helps organizations keep their workforce
+                  information organized and accessible.
+                </p>
+
+                <div className="mt-7 flex flex-wrap gap-3">
+                  <div className="rounded-xl border border-orange-100 bg-white px-5 py-3">
+                    <p className="text-lg font-black text-orange-600">
+                      Admin
+                    </p>
+                    
+                  </div>
+
+                  <div className="rounded-xl border border-orange-100 bg-white px-5 py-3">
+                    <p className="text-lg font-black text-orange-600">
+                      Manager
+                    </p>
+                    
+                  </div>
+
+                  <div className="rounded-xl border border-orange-100 bg-white px-5 py-3">
+                    <p className="text-lg font-black text-orange-600">
+                      Employee
+                    </p>
+                    
+                  </div>
+                </div>
+              </div>
+
+              {/* About visual */}
+              <div className="rounded-3xl border border-orange-100 bg-white p-8 shadow-sm">
+                <div className="grid gap-4 sm:grid-cols-2">
+
+                  <div className="rounded-2xl bg-orange-50 p-6">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-600 text-white">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-6 w-6"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                      >
+                        <circle cx="12" cy="7" r="4" />
+                        <path d="M4 21a8 8 0 0 1 16 0" />
+                      </svg>
+                    </div>
+
+                    <h3 className="mt-5 font-extrabold text-slate-900">
+                      People First
+                    </h3>
+
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      Designed around the everyday needs of employees and HR
+                      teams.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-slate-50 p-6">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-white">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-6 w-6"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                      >
+                        <path d="M4 19V5" />
+                        <path d="M4 19h16" />
+                        <path d="M8 16v-5M12 16V7M16 16v-3M20 16V4" />
+                      </svg>
+                    </div>
+
+                    <h3 className="mt-5 font-extrabold text-slate-900">
+                      Organized Data
+                    </h3>
+
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      Keep important employee and operational information
+                      organized in one place.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-slate-50 p-6">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-white">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-6 w-6"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                      >
+                        <path d="M12 3v18M3 12h18" />
+                        <circle cx="12" cy="12" r="9" />
+                      </svg>
+                    </div>
+
+                    <h3 className="mt-5 font-extrabold text-slate-900">
+                      Connected Teams
+                    </h3>
+
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      Administrators, managers, and employees work through
+                      dedicated role-based experiences.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-orange-50 p-6">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-600 text-white">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-6 w-6"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                      >
+                        <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z" />
+                        <path d="M9 12l2 2 4-4" />
+                      </svg>
+                    </div>
+
+                    <h3 className="mt-5 font-extrabold text-slate-900">
+                      Role Based Access
+                    </h3>
+
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      Users access the workspace and operations relevant to
+                      their responsibilities.
+                    </p>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ================= STATS ================= */}
         <section className="border-b border-slate-200 bg-white">
           <div className="mx-auto grid max-w-7xl gap-0 px-6 lg:grid-cols-4 lg:px-8">
             {[
@@ -464,7 +641,9 @@ function Landing() {
               <div
                 key={title}
                 className={`flex gap-4 px-4 py-7 ${
-                  index !== 0 ? "border-t border-slate-100 lg:border-l lg:border-t-0" : ""
+                  index !== 0
+                    ? "border-t border-slate-100 lg:border-l lg:border-t-0"
+                    : ""
                 }`}
               >
                 <span className="text-xs font-black text-orange-600">
@@ -472,7 +651,9 @@ function Landing() {
                 </span>
 
                 <div>
-                  <p className="text-sm font-bold text-slate-800">{title}</p>
+                  <p className="text-sm font-bold text-slate-800">
+                    {title}
+                  </p>
 
                   <p className="mt-1 text-xs leading-5 text-slate-400">
                     {description}
@@ -483,7 +664,7 @@ function Landing() {
           </div>
         </section>
 
-        {/* Features */}
+        {/* ================= FEATURES ================= */}
         <section
           id="features"
           className="mx-auto max-w-7xl px-6 py-20 lg:px-8"
@@ -522,7 +703,7 @@ function Landing() {
                 </p>
 
                 <div className="mt-5 flex items-center gap-2 text-xs font-bold text-orange-600">
-                  View module
+                  Available module
                   <svg
                     viewBox="0 0 20 20"
                     className="h-4 w-4"
@@ -538,10 +719,11 @@ function Landing() {
           </div>
         </section>
 
-        {/* Roles */}
+        {/* ================= ROLES ================= */}
         <section id="roles" className="border-y border-slate-200 bg-[#f8f8f8]">
           <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
             <div className="grid items-center gap-12 lg:grid-cols-[0.8fr_1.2fr]">
+
               <div>
                 <span className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-600">
                   Built for every role
@@ -570,7 +752,7 @@ function Landing() {
                     stroke="currentColor"
                     strokeWidth="2"
                   >
-                    <path d="M4 10h12M11 5l5 5-5 5" />
+                    <path d="M4 10h12M11 5l5-5" />
                   </svg>
                 </Link>
               </div>
@@ -599,17 +781,19 @@ function Landing() {
                   </div>
                 ))}
               </div>
+
             </div>
           </div>
         </section>
 
-        {/* People Portal */}
+        {/* ================= PEOPLE PORTAL ================= */}
         <section
           id="portal"
           className="mx-auto max-w-7xl px-6 py-20 lg:px-8"
         >
           <div className="overflow-hidden rounded-3xl bg-[#1f1f1f]">
             <div className="grid items-center gap-10 px-7 py-10 sm:px-10 lg:grid-cols-[1fr_auto] lg:px-14 lg:py-14">
+
               <div>
                 <span className="inline-flex rounded-full bg-orange-600/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-orange-400">
                   People Portal
@@ -651,7 +835,6 @@ function Landing() {
                 </div>
               </div>
 
-              {/* simple visual */}
               <div className="hidden lg:flex lg:h-48 lg:w-48 lg:items-center lg:justify-center">
                 <div className="relative flex h-40 w-40 items-center justify-center rounded-full border border-orange-600/20">
                   <div className="absolute h-28 w-28 rounded-full border border-orange-600/20" />
@@ -670,13 +853,112 @@ function Landing() {
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
         </section>
 
-        {/* Final CTA */}
+        {/* ================= CONTACT ================= */}
+        <section
+          id="contact"
+          className="border-t border-slate-200 bg-[#fffaf7]"
+        >
+          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+
+            <div className="mx-auto max-w-2xl text-center">
+              <span className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-600">
+                Contact Us
+              </span>
+
+              <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+                Let’s connect.
+              </h2>
+
+              <p className="mt-4 text-sm leading-6 text-slate-500 sm:text-base">
+                Have questions about EmployeeMS or need assistance with the
+                platform? Our team is here to help.
+              </p>
+            </div>
+
+            <div className="mx-auto mt-12 grid max-w-4xl gap-5 sm:grid-cols-3">
+
+              <div className="rounded-2xl border border-orange-100 bg-white p-6 text-center shadow-sm">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  >
+                    <rect x="3" y="5" width="18" height="14" rx="2" />
+                    <path d="m3 7 9 6 9-6" />
+                  </svg>
+                </div>
+
+                <h3 className="mt-5 font-extrabold text-slate-900">
+                  Email
+                </h3>
+
+                <p className="mt-2 text-sm text-slate-500">
+                  Contact the organization through its official communication
+                  channel.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-orange-100 bg-white p-6 text-center shadow-sm">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  >
+                    <path d="M12 21s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z" />
+                    <circle cx="12" cy="9" r="2.5" />
+                  </svg>
+                </div>
+
+                <h3 className="mt-5 font-extrabold text-slate-900">
+                  Organization
+                </h3>
+
+                <p className="mt-2 text-sm text-slate-500">
+                  SHNOOR INTERNATIONAL LLC
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-orange-100 bg-white p-6 text-center shadow-sm">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  >
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.78.62 2.63a2 2 0 0 1-.45 2.11L8 9.73a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.85.29 1.73.5 2.63.62A2 2 0 0 1 22 16.92z" />
+                  </svg>
+                </div>
+
+                <h3 className="mt-5 font-extrabold text-slate-900">
+                  Support
+                </h3>
+
+                <p className="mt-2 text-sm text-slate-500">
+                  Assistance for employees and HR operations.
+                </p>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        {/* ================= FINAL CTA ================= */}
         <section className="border-t border-slate-200 bg-white">
           <div className="mx-auto max-w-5xl px-6 py-20 text-center">
+
             <span className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-600">
               Employee Management System
             </span>
@@ -707,11 +989,13 @@ function Landing() {
             </div>
           </div>
         </section>
+
       </main>
 
-      {/* Footer */}
+      {/* ================= FOOTER ================= */}
       <footer className="border-t border-slate-800 bg-[#181818] text-slate-400">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-6 py-8 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-8 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+
           <div>
             <p className="font-bold text-white">
               Employee<span className="text-orange-600">MS</span>
@@ -720,38 +1004,65 @@ function Landing() {
             <p className="mt-1 text-xs">
               Employee Management System
             </p>
+
+            <p className="mt-1 text-xs text-slate-500">
+              SHNOOR INTERNATIONAL LLC
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-5 text-xs">
+            <a
+              href="#home"
+              className="transition hover:text-orange-400"
+            >
+              Home
+            </a>
+
+            <a
+              href="#about"
+              className="transition hover:text-orange-400"
+            >
+              About
+            </a>
+
+            <a
+              href="#features"
+              className="transition hover:text-orange-400"
+            >
+              Features
+            </a>
+
+            <a
+              href="#contact"
+              className="transition hover:text-orange-400"
+            >
+              Contact
+            </a>
+
+            <Link
+              to="/terms"
+              className="transition hover:text-orange-400"
+            >
+              Terms
+            </Link>
+
+            <Link
+              to="/privacy-policy"
+              className="transition hover:text-orange-400"
+            >
+              Privacy
+            </Link>
           </div>
 
           <div className="text-xs">
             © {new Date().getFullYear()} EmployeeMS. All rights reserved.
           </div>
+
         </div>
       </footer>
+
     </div>
   );
 }
 
 export default Landing;
-<footer className="border-t border-slate-800 bg-slate-950">
-  <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 py-6 text-sm sm:flex-row">
-    <div className="text-slate-400">
-      © 2026 SHNOOR INTERNATIONAL LLC · Employee Management System
-    </div>
-
-    <div className="flex items-center gap-5">
-      <Link
-        to="/terms"
-        className="text-slate-400 transition hover:text-orange-400"
-      >
-        Terms & Conditions
-      </Link>
-
-      <Link
-        to="/privacy-policy"
-        className="text-slate-400 transition hover:text-orange-400"
-      >
-        Privacy Policy
-      </Link>
-    </div>
-  </div>
-</footer>

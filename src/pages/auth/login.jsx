@@ -10,7 +10,6 @@ import {
 import { auth as firebaseAuth } from "../../firebase";
 import { apiRequest } from "../../api/api";
 
-
 function EyeIcon({ hidden = false }) {
   return hidden ? (
     <svg
@@ -41,41 +40,6 @@ function EyeIcon({ hidden = false }) {
   );
 }
 
-
-function ArrowIcon() {
-  return (
-    <svg
-      className="h-4 w-4"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden="true"
-    >
-      <path d="M5 12h14" />
-      <path d="m13 6 6 6-6 6" />
-    </svg>
-  );
-}
-
-
-function ShieldIcon() {
-  return (
-    <svg
-      className="h-5 w-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      aria-hidden="true"
-    >
-      <path d="M12 3 20 6v5c0 5.1-3.4 8.7-8 10-4.6-1.3-8-4.9-8-10V6l8-3Z" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  );
-}
-
-
 function GoogleIcon() {
   return (
     <svg
@@ -103,7 +67,6 @@ function GoogleIcon() {
   );
 }
 
-
 function Login() {
   const navigate = useNavigate();
 
@@ -118,15 +81,10 @@ function Login() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-
-  // -------------------------------------------------------
-  // Save user session and redirect
-  // -------------------------------------------------------
-
   const saveUserAndRedirect = (user) => {
-    const role = String(
-      user?.role || "employee"
-    ).trim().toLowerCase();
+    const role = String(user?.role || "employee")
+      .trim()
+      .toLowerCase();
 
     const userId =
       user?._id ||
@@ -134,16 +92,10 @@ function Login() {
       user?.user_id;
 
     if (userId) {
-      localStorage.setItem(
-        "userId",
-        String(userId)
-      );
+      localStorage.setItem("userId", String(userId));
     }
 
-    localStorage.setItem(
-      "userRole",
-      role
-    );
+    localStorage.setItem("userRole", role);
 
     localStorage.setItem(
       "userEmail",
@@ -162,9 +114,7 @@ function Login() {
       JSON.stringify(user)
     );
 
-    setMessage(
-      "Login successful. Redirecting..."
-    );
+    setMessage("Login successful. Redirecting...");
 
     if (role === "admin") {
       navigate("/admin/dashboard");
@@ -175,11 +125,6 @@ function Login() {
     }
   };
 
-
-  // -------------------------------------------------------
-  // NORMAL EMAIL/PASSWORD LOGIN
-  // -------------------------------------------------------
-
   const handleLogin = async (e) => {
     e.preventDefault();
 
@@ -187,19 +132,15 @@ function Login() {
     setMessage("");
 
     if (!email.trim() || !password) {
-      setError(
-        "Please enter your email and password."
-      );
+      setError("Please enter your email and password.");
       return;
     }
 
     setLoading(true);
 
     try {
-      const cleanEmail =
-        email.trim().toLowerCase();
+      const cleanEmail = email.trim().toLowerCase();
 
-      // Firebase authenticates the password.
       const credential =
         await signInWithEmailAndPassword(
           firebaseAuth,
@@ -207,11 +148,9 @@ function Login() {
           password
         );
 
-      // Get Firebase ID token.
       const idToken =
         await credential.user.getIdToken();
 
-      // Send Firebase token to Flask.
       const data = await apiRequest(
         "/auth/firebase-login",
         {
@@ -231,26 +170,18 @@ function Login() {
       }
 
       saveUserAndRedirect(data.user);
-
     } catch (err) {
-      console.error(
-        "Email login error:",
-        err
-      );
+      console.error("Email login error:", err);
 
       switch (err?.code) {
         case "auth/invalid-credential":
         case "auth/wrong-password":
         case "auth/user-not-found":
-          setError(
-            "Invalid email or password."
-          );
+          setError("Invalid email or password.");
           break;
 
         case "auth/invalid-email":
-          setError(
-            "Please enter a valid email address."
-          );
+          setError("Please enter a valid email address.");
           break;
 
         case "auth/user-disabled":
@@ -271,16 +202,10 @@ function Login() {
               "Unable to sign in. Please try again."
           );
       }
-
     } finally {
       setLoading(false);
     }
   };
-
-
-  // -------------------------------------------------------
-  // GOOGLE LOGIN
-  // -------------------------------------------------------
 
   const handleGoogleLogin = async () => {
     setError("");
@@ -288,8 +213,7 @@ function Login() {
     setGoogleLoading(true);
 
     try {
-      const provider =
-        new GoogleAuthProvider();
+      const provider = new GoogleAuthProvider();
 
       const result =
         await signInWithPopup(
@@ -300,7 +224,6 @@ function Login() {
       const idToken =
         await result.user.getIdToken();
 
-      // Keep the existing Google backend endpoint.
       const data = await apiRequest(
         "/auth/google",
         {
@@ -320,12 +243,8 @@ function Login() {
       }
 
       saveUserAndRedirect(data.user);
-
     } catch (err) {
-      console.error(
-        "Google login error:",
-        err
-      );
+      console.error("Google login error:", err);
 
       if (
         err?.code ===
@@ -354,193 +273,63 @@ function Login() {
             "Google login failed."
         );
       }
-
     } finally {
       setGoogleLoading(false);
     }
   };
 
-
   return (
-    <div className="min-h-screen bg-slate-50 lg:flex">
+    <div className="h-screen overflow-hidden bg-white lg:flex">
 
-      {/* =================================================
-          LEFT BRANDING
-      ================================================= */}
+      {/* LEFT IMAGE */}
+      <div className="relative hidden h-screen w-1/2 overflow-hidden lg:block">
 
-      <section className="relative hidden min-h-screen overflow-hidden bg-slate-950 lg:flex lg:w-[48%]">
+        {/* PASTE YOUR IMAGE URL HERE */}
+        <img
+          src="https://media.istockphoto.com/id/1895058984/vector/hand-holding-smartphone-with-user-login-form-page-flat-illustration-vector-template-account.jpg?s=612x612&w=0&k=20&c=Wan_RzvpQhIQtYNq7cR7zJj42BvFIkmDFVD4wcmEcDA="
+          alt="Shnoor International LLC"
+          className="absolute inset-0 h-full w-full object-cover scale-125"
+        />
 
-        <div className="absolute inset-0 bg-gradient-to-br from-orange-950 via-slate-950 to-slate-900" />
+        
 
-        <div className="absolute -left-20 top-16 h-80 w-80 rounded-full bg-orange-600/20 blur-3xl" />
+       </div>
 
-        <div className="absolute -bottom-24 right-0 h-96 w-96 rounded-full bg-orange-500/10 blur-3xl" />
-
-        <div className="relative z-10 flex w-full flex-col justify-between p-12 xl:p-16">
-
-          {/* BRAND */}
-
-          <div className="flex items-center gap-3">
-
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-600 text-xl font-black text-white shadow-lg shadow-orange-950/40">
-              E
-            </div>
-
-            <div>
-              <p className="text-lg font-bold tracking-tight text-white">
-                Employee Management System
-              </p>
-
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-orange-300">
-                People Portal
-              </p>
-            </div>
-
-          </div>
+     
 
 
-          {/* MAIN */}
-
-          <div className="max-w-xl">
-
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-orange-200 backdrop-blur">
-
-              <span className="h-2 w-2 rounded-full bg-emerald-400" />
-
-              Secure employee access
-
-            </div>
-
-            <h1 className="text-5xl font-bold leading-tight tracking-tight text-white xl:text-6xl">
-
-              One portal for
-
-              <span className="block text-orange-400">
-                people & performance.
-              </span>
-
-            </h1>
-
-            <p className="mt-6 max-w-lg text-base leading-7 text-slate-300">
-              Access attendance, tasks, leave requests,
-              performance, documents, payroll, and employee
-              services from one professional workspace.
-            </p>
-
-            <div className="mt-10 grid max-w-lg grid-cols-3 gap-3">
-
-              {[
-                ["01", "Attendance"],
-                ["02", "Workforce"],
-                ["03", "Reports"],
-              ].map(
-                ([number, label]) => (
-                  <div
-                    key={number}
-                    className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm"
-                  >
-                    <p className="text-xs font-semibold text-orange-300">
-                      {number}
-                    </p>
-
-                    <p className="mt-2 text-sm font-semibold text-white">
-                      {label}
-                    </p>
-                  </div>
-                )
-              )}
-
-            </div>
-
-          </div>
-
-
-          {/* COMPANY */}
-
-          <div className="text-sm text-slate-400">
-
-            <p className="font-semibold text-slate-300">
-              SHNOOR INTERNATIONAL LLC
-            </p>
-
-            <p className="mt-1">
-              Empowering people. Managing work. Building success.
-            </p>
-
-          </div>
-
-        </div>
-
-      </section>
-
-
-      {/* =================================================
-          LOGIN PANEL
-      ================================================= */}
-
-      <section className="flex min-h-screen w-full items-center justify-center px-5 py-10 sm:px-8 lg:w-[52%] lg:px-12">
+      {/* RIGHT LOGIN */}
+      <div className="flex h-screen w-full items-center justify-center overflow-hidden px-5 sm:px-8 lg:w-1/2 lg:px-16">
 
         <div className="w-full max-w-md">
 
-          {/* MOBILE BRAND */}
+          {/* COMPANY NAME */}
+          <div className="mb-6 text-center">
+            <p>WELCOME TO</p>
 
-          <div className="mb-9 flex items-center gap-3 lg:hidden">
+            <h1 className="text-2xl font-bold tracking-wide text-slate-900">
+              SHNOOR INTERNATIONAL LLC
+            </h1>
 
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-600 text-xl font-black text-white shadow-sm">
-              E
-            </div>
-
-            <div>
-
-              <p className="font-bold tracking-tight text-slate-900">
-                Employee Management System
-              </p>
-
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-600">
-                People Portal
-              </p>
-
-            </div>
+            <div className="mx-auto mt-2 h-1 w-12 rounded-full bg-orange-600" />
 
           </div>
 
 
-          {/* HEADING */}
-
-          <div className="mb-8">
-
-            <p className="mb-2 text-sm font-semibold uppercase tracking-[0.18em] text-orange-600">
-              People Login
-            </p>
-
-            <h2 className="text-4xl font-bold tracking-tight text-slate-900">
-              Welcome back
-            </h2>
-
-            <p className="mt-3 text-sm leading-6 text-slate-500">
-              Sign in with your registered account to
-              continue to your employee portal.
-            </p>
-
-          </div>
-
-
-          {/* FORM */}
-
+          {/* LOGIN FORM */}
           <form
             onSubmit={handleLogin}
-            className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/60 sm:p-8"
+            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/60"
           >
 
-            <div className="space-y-5">
+            <div className="space-y-4">
 
               {/* EMAIL */}
-
               <div>
 
                 <label
                   htmlFor="login-email"
-                  className="mb-2 block text-sm font-semibold text-slate-700"
+                  className="mb-1.5 block text-xs font-semibold text-slate-700"
                 >
                   Email address
                 </label>
@@ -553,8 +342,8 @@ function Login() {
                   onChange={(e) =>
                     setEmail(e.target.value)
                   }
-                  placeholder="you@example.com"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-50"
+                  placeholder="Enter email address"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-50"
                   required
                 />
 
@@ -562,21 +351,20 @@ function Login() {
 
 
               {/* PASSWORD */}
-
               <div>
 
-                <div className="mb-2 flex items-center justify-between">
+                <div className="mb-1.5 flex items-center justify-between">
 
                   <label
                     htmlFor="login-password"
-                    className="block text-sm font-semibold text-slate-700"
+                    className="block text-xs font-semibold text-slate-700"
                   >
                     Password
                   </label>
 
                   <Link
                     to="/forgot-password"
-                    className="text-xs font-semibold text-orange-600 transition hover:text-orange-700"
+                    className="text-[11px] font-semibold text-orange-600 hover:text-orange-700"
                   >
                     Forgot password?
                   </Link>
@@ -597,8 +385,8 @@ function Login() {
                     onChange={(e) =>
                       setPassword(e.target.value)
                     }
-                    placeholder="Enter your password"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-50"
+                    placeholder="Enter password"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 pr-11 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-50"
                     required
                   />
 
@@ -609,7 +397,7 @@ function Login() {
                         (value) => !value
                       )
                     }
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                     aria-label={
                       showPassword
                         ? "Hide password"
@@ -626,71 +414,42 @@ function Login() {
               </div>
 
 
-              {/* MESSAGES */}
-
+              {/* ERROR */}
               {error && (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium leading-5 text-red-700">
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
                   {error}
                 </div>
               )}
 
+
+              {/* SUCCESS */}
               {message && (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium leading-5 text-emerald-700">
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
                   {message}
                 </div>
               )}
 
 
-              {/* PROTECTED ACCESS */}
-
-              <div className="flex items-center justify-between">
-
-                <div className="inline-flex items-center gap-2 text-xs text-slate-500">
-
-                  <ShieldIcon />
-
-                  Protected account access
-
-                </div>
-
-              </div>
-
-
-              {/* EMAIL LOGIN BUTTON */}
-
+              {/* LOGIN BUTTON */}
               <button
                 type="submit"
                 disabled={
-                  loading ||
-                  googleLoading
+                  loading || googleLoading
                 }
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-lg bg-orange-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-
-                {loading ? (
-                  <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-
-                    Signing in...
-                  </>
-                ) : (
-                  <>
-                    Sign in to People Portal
-
-                    <ArrowIcon />
-                  </>
-                )}
-
+                {loading
+                  ? "Signing in..."
+                  : "Sign in"}
               </button>
 
 
               {/* DIVIDER */}
-
-              <div className="flex items-center gap-3 py-1">
+              <div className="flex items-center gap-3">
 
                 <div className="h-px flex-1 bg-slate-200" />
 
-                <span className="text-xs font-medium text-slate-400">
+                <span className="text-[10px] font-medium text-slate-400">
                   OR
                 </span>
 
@@ -700,27 +459,24 @@ function Login() {
 
 
               {/* GOOGLE LOGIN */}
-
               <button
                 type="button"
                 onClick={handleGoogleLogin}
                 disabled={
-                  loading ||
-                  googleLoading
+                  loading || googleLoading
                 }
-                className="inline-flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
 
                 {googleLoading ? (
                   <>
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
 
-                    Connecting to Google...
+                    Connecting...
                   </>
                 ) : (
                   <>
                     <GoogleIcon />
-
                     Continue with Google
                   </>
                 )}
@@ -733,33 +489,22 @@ function Login() {
 
 
           {/* REGISTER */}
-
-          <div className="mt-7 text-center text-sm text-slate-500">
+          <p className="mt-4 text-center text-xs text-slate-500">
 
             Don't have an account?{" "}
 
             <Link
               to="/register"
-              className="font-semibold text-orange-600 transition hover:text-orange-700"
+              className="font-semibold text-orange-600 hover:text-orange-700"
             >
               Create an account
             </Link>
 
-          </div>
-
-
-          {/* FOOTER */}
-
-          <div className="mt-8 text-center text-xs leading-5 text-slate-400">
-
-            By continuing, you agree to use the employee portal only
-            with authorized account credentials.
-
-          </div>
+          </p>
 
         </div>
 
-      </section>
+      </div>
 
     </div>
   );
